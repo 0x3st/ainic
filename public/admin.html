@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>py.kg - 管理后台</title>
+  <title>PY.KG - 管理后台</title>
   <style>
     :root {
       --primary: #2563eb;
@@ -395,7 +395,7 @@
       document.getElementById('app').innerHTML = `
         <div class="admin-layout">
           <div class="sidebar">
-            <h1>py.kg</h1>
+            <h1>PY.KG</h1>
             <p>管理后台</p>
             <ul class="nav-menu">
               <li class="nav-item">
@@ -964,7 +964,7 @@
                       const canApprove = review.status === 'pending' && isPaid;
                       return `
                       <tr>
-                        <td>${review.label}.py.kg</td>
+                        <td>${review.label}.PY.KG</td>
                         <td>${review.username} (${review.linuxdo_id})</td>
                         <td>${review.reason || '-'}</td>
                         <td>
