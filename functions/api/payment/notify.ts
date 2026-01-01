@@ -40,6 +40,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     return new Response('fail', { status: 200 });
   }
 
+  console.log('[Payment Notify] ✅ Signature verified successfully');
+
   // Check trade status
   if (params.trade_status !== 'TRADE_SUCCESS') {
     console.log('[Payment Notify] Trade status is not TRADE_SUCCESS:', params.trade_status);
@@ -47,16 +49,28 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     return new Response('success', { status: 200 });
   }
 
+  console.log('[Payment Notify] ✅ Trade status is TRADE_SUCCESS');
+
   // Find order by out_trade_no
+  console.log('[Payment Notify] 🔍 Looking for order:', params.out_trade_no);
+
   const order = await env.DB.prepare(
     'SELECT * FROM orders WHERE order_no = ?'
   ).bind(params.out_trade_no).first<Order>();
 
   if (!order) {
-    console.error('[Payment Notify] Order not found:', params.out_trade_no);
+    console.error('[Payment Notify] ❌ Order not found:', params.out_trade_no);
     // 订单不存在不应该重试，返回 200 + 'fail' 让平台停止重试
     return new Response('fail', { status: 200 });
   }
+
+  console.log('[Payment Notify] ✅ Order found:', {
+    order_no: order.order_no,
+    label: order.label,
+    amount: order.amount,
+    current_status: order.status,
+    linuxdo_id: order.linuxdo_id
+  });
 
   // Check if already processed
   if (order.status === 'paid') {
@@ -78,13 +92,23 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   // Update order status and create domain
   try {
+    console.log('[Payment Notify] 💾 Updating order status to paid...');
+
     await env.DB.prepare(`
       UPDATE orders SET status = 'paid', trade_no = ?, paid_at = datetime('now')
       WHERE order_no = ?
     `).bind(params.trade_no, params.out_trade_no).run();
 
+    console.log('[Payment Notify] ✅ Order updated successfully:', {
+      order_no: params.out_trade_no,
+      trade_no: params.trade_no,
+      new_status: 'paid'
+    });
+
     const baseDomain = env.BASE_DOMAIN || 'py.kg';
     const fqdn = `${order.label}.${baseDomain}`;
+
+    console.log('[Payment Notify] 🔍 Checking for pending review...');
 
     // Check if there's a pending review for this order
     const pendingReview = await env.DB.prepare(
@@ -92,6 +116,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     ).bind(params.out_trade_no, 'pending').first();
 
     if (pendingReview) {
+      console.log('[Payment Notify] ⚠️ Domain requires manual review');
+
       // If pending review exists, domain will be created after approval
       // Just log the payment
       await env.DB.prepare(`
@@ -110,13 +136,17 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         request.headers.get('CF-Connecting-IP')
       ).run();
 
-      console.log('[Payment Notify] Payment successful, domain pending review:', fqdn);
+      console.log('[Payment Notify] ✅ Payment logged, domain pending review:', fqdn);
     } else {
+      console.log('[Payment Notify] 🌐 Creating domain:', fqdn);
+
       // No review needed, create domain directly as active
       await env.DB.prepare(`
         INSERT INTO domains (label, fqdn, owner_linuxdo_id, status, created_at)
         VALUES (?, ?, ?, 'active', datetime('now'))
       `).bind(order.label, fqdn, order.linuxdo_id).run();
+
+      console.log('[Payment Notify] ✅ Domain created successfully in database');
 
       // Log the action
       await env.DB.prepare(`
@@ -134,7 +164,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         request.headers.get('CF-Connecting-IP')
       ).run();
 
-      console.log('[Payment Notify] Domain registered successfully:', fqdn);
+      console.log('[Payment Notify] ✅ Audit log created');
+      console.log('[Payment Notify] 🎉 Domain registered successfully:', fqdn);
     }
 
   } catch (e) {
