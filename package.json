@@ -3,14 +3,17 @@
 	"version": "0.0.0",
 	"private": true,
 	"scripts": {
-		"deploy": "wrangler deploy",
-		"dev": "wrangler dev",
-		"start": "wrangler dev",
+		"dev": "wrangler pages dev ./public --d1=DB=pykg-nic-db",
+		"dev:remote": "wrangler pages dev ./public --d1=DB=pykg-nic-db --remote",
+		"deploy": "wrangler pages deploy ./public",
+		"db:init:local": "wrangler d1 execute pykg-nic-db --local --file=./schema.sql",
+		"db:init:remote": "wrangler d1 execute pykg-nic-db --remote --file=./schema.sql",
 		"test": "vitest",
 		"cf-typegen": "wrangler types"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.8.19",
+		"@cloudflare/workers-types": "^4.20241230.0",
 		"typescript": "^5.5.2",
 		"vitest": "~3.2.0",
 		"wrangler": "^4.54.0"

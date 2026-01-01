@@ -1,32 +1,765 @@
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
-	</head>
-	<body>
-		<h1 id="heading"></h1>
-		<p>This page comes from a static asset stored at `public/index.html` as configured in `wrangler.jsonc`.</p>
-		<button id="button" type="button">Fetch a random UUID</button>
-		<output id="random" for="button"></output>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>py.kg - 子域名注册局</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --success: #16a34a;
+      --warning: #d97706;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
 
-			const button = document.getElementById("button");
-			button.addEventListener("click", () => {
-				fetch('/random')
-					.then((resp) => resp.text())
-					.then((text) => {
-						const random = document.getElementById('random');
-						random.textContent = text;
-					});
-			});
-		</script>
-	</body>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      color: var(--text-muted);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.625rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: var(--danger-hover);
+    }
+
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .alert {
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+
+    .alert-error {
+      background: #fef2f2;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+    }
+
+    .alert-success {
+      background: #f0fdf4;
+      color: var(--success);
+      border: 1px solid #bbf7d0;
+    }
+
+    .alert-warning {
+      background: #fffbeb;
+      color: var(--warning);
+      border: 1px solid #fde68a;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 500;
+      margin-bottom: 0.375rem;
+      font-size: 0.875rem;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.625rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+    }
+
+    .input-group input {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    .input-group .suffix {
+      padding: 0.625rem 1rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: none;
+      border-top-right-radius: 6px;
+      border-bottom-right-radius: 6px;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .user-info {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .user-details {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .badge-success {
+      background: #dcfce7;
+      color: var(--success);
+    }
+
+    .badge-warning {
+      background: #fef3c7;
+      color: var(--warning);
+    }
+
+    .domain-display {
+      font-family: monospace;
+      font-size: 1.25rem;
+      padding: 1rem;
+      background: var(--bg);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+
+    .records-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    .records-table th, .records-table td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .records-table th {
+      background: var(--bg);
+      font-weight: 600;
+    }
+
+    .records-table code {
+      background: var(--bg);
+      padding: 0.125rem 0.375rem;
+      border-radius: 4px;
+      font-size: 0.8125rem;
+    }
+
+    .record-form {
+      display: grid;
+      grid-template-columns: 1fr 100px 80px 1fr auto;
+      gap: 0.5rem;
+      align-items: end;
+      margin-bottom: 1rem;
+    }
+
+    .record-form input, .record-form select {
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+
+    .record-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    @media (max-width: 640px) {
+      .record-form {
+        grid-template-columns: 1fr;
+      }
+
+      .user-info {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>py.kg</h1>
+      <p>LinuxDO 社区子域名注册服务</p>
+    </header>
+
+    <!-- Error display -->
+    <div id="error-container" class="hidden"></div>
+
+    <!-- Login section (shown when not logged in) -->
+    <div id="login-section" class="card hidden">
+      <h2>登录</h2>
+      <p style="margin-bottom: 1rem; color: var(--text-muted);">
+        使用 LinuxDO 账号登录以注册您的专属子域名。
+        <br>
+        <small>要求：信任等级 ≥ 2</small>
+      </p>
+      <a href="/auth/login" class="btn btn-primary">使用 LinuxDO 登录</a>
+    </div>
+
+    <!-- User section (shown when logged in) -->
+    <div id="user-section" class="card hidden">
+      <div class="user-info">
+        <div class="user-details">
+          <div class="avatar" id="user-avatar">?</div>
+          <div>
+            <strong id="user-name">加载中...</strong>
+            <br>
+            <span class="badge badge-success" id="user-trust">TL?</span>
+          </div>
+        </div>
+        <a href="/auth/logout" class="btn btn-secondary">退出登录</a>
+      </div>
+    </div>
+
+    <!-- Domain registration section -->
+    <div id="register-section" class="card hidden">
+      <h2>注册子域名</h2>
+      <p style="margin-bottom: 1rem; color: var(--text-muted);">
+        每位用户可注册一个子域名，请谨慎选择。
+      </p>
+      <form id="register-form">
+        <div class="form-group">
+          <label for="label-input">子域名</label>
+          <div class="input-group">
+            <input type="text" id="label-input" placeholder="your-name" pattern="[a-z0-9-]+" required>
+            <span class="suffix">.py.kg</span>
+          </div>
+          <small style="color: var(--text-muted); margin-top: 0.25rem; display: block;">
+            只允许小写字母、数字和连字符，长度 2-63 字符
+          </small>
+        </div>
+        <button type="submit" class="btn btn-primary" id="register-btn">注册域名</button>
+      </form>
+    </div>
+
+    <!-- Domain management section -->
+    <div id="domain-section" class="card hidden">
+      <h2>我的域名</h2>
+      <div class="domain-display" id="domain-display">加载中...</div>
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+        <span class="badge badge-success" id="domain-status">active</span>
+        <span style="color: var(--text-muted); font-size: 0.875rem;" id="domain-created"></span>
+      </div>
+      <div style="margin-top: 1rem;">
+        <button class="btn btn-danger btn-sm" id="delete-domain-btn">删除域名</button>
+      </div>
+    </div>
+
+    <!-- DNS Records section -->
+    <div id="records-section" class="card hidden">
+      <h2>DNS 记录管理</h2>
+      <p style="margin-bottom: 1rem; color: var(--text-muted);">
+        支持的记录类型：A、AAAA、CNAME、TXT
+      </p>
+
+      <!-- Add record form -->
+      <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg); border-radius: 6px;">
+        <h3 style="font-size: 0.875rem; margin-bottom: 0.75rem;">添加记录</h3>
+        <form id="add-record-form">
+          <div class="record-form">
+            <div>
+              <label style="font-size: 0.75rem;">名称</label>
+              <input type="text" id="new-subname" placeholder="@ 或 www">
+            </div>
+            <div>
+              <label style="font-size: 0.75rem;">类型</label>
+              <select id="new-type">
+                <option value="A">A</option>
+                <option value="AAAA">AAAA</option>
+                <option value="CNAME">CNAME</option>
+                <option value="TXT">TXT</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size: 0.75rem;">TTL</label>
+              <input type="number" id="new-ttl" value="3600" min="60" max="86400">
+            </div>
+            <div>
+              <label style="font-size: 0.75rem;">值</label>
+              <input type="text" id="new-value" placeholder="1.2.3.4" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">添加</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Records table -->
+      <div id="records-loading" class="loading">
+        <span class="spinner"></span>
+        <p>加载 DNS 记录...</p>
+      </div>
+      <table class="records-table hidden" id="records-table">
+        <thead>
+          <tr>
+            <th>名称</th>
+            <th>类型</th>
+            <th>TTL</th>
+            <th>值</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="records-tbody">
+        </tbody>
+      </table>
+      <p id="no-records" class="hidden" style="color: var(--text-muted); text-align: center; padding: 1rem;">
+        暂无 DNS 记录
+      </p>
+    </div>
+
+    <footer>
+      <p>
+        Powered by <a href="https://pages.cloudflare.com" target="_blank">Cloudflare Pages</a>
+        & <a href="https://desec.io" target="_blank">deSEC</a>
+      </p>
+      <p style="margin-top: 0.5rem;">
+        <a href="https://linux.do" target="_blank">LinuxDO 社区</a>
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // State
+    let currentUser = null;
+    let currentDomain = null;
+    let currentRecords = [];
+
+    // DOM elements
+    const errorContainer = document.getElementById('error-container');
+    const loginSection = document.getElementById('login-section');
+    const userSection = document.getElementById('user-section');
+    const registerSection = document.getElementById('register-section');
+    const domainSection = document.getElementById('domain-section');
+    const recordsSection = document.getElementById('records-section');
+
+    // Show error
+    function showError(message) {
+      errorContainer.innerHTML = `<div class="alert alert-error">${escapeHtml(message)}</div>`;
+      errorContainer.classList.remove('hidden');
+    }
+
+    // Show success
+    function showSuccess(message) {
+      errorContainer.innerHTML = `<div class="alert alert-success">${escapeHtml(message)}</div>`;
+      errorContainer.classList.remove('hidden');
+      setTimeout(() => errorContainer.classList.add('hidden'), 5000);
+    }
+
+    // Clear messages
+    function clearMessages() {
+      errorContainer.classList.add('hidden');
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Check for URL error parameter
+    function checkUrlError() {
+      const params = new URLSearchParams(window.location.search);
+      const error = params.get('error');
+      if (error) {
+        showError(error);
+        // Clean URL
+        window.history.replaceState({}, '', '/');
+      }
+    }
+
+    // API helper
+    async function api(method, path, body = null) {
+      const options = {
+        method,
+        headers: {},
+        credentials: 'same-origin',
+      };
+      if (body) {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(body);
+      }
+      const response = await fetch(path, options);
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Request failed');
+      }
+      return data.data;
+    }
+
+    // Load user info
+    async function loadUser() {
+      try {
+        const data = await api('GET', '/api/me');
+        currentUser = data.user;
+
+        // Update UI
+        document.getElementById('user-avatar').textContent = currentUser.username[0].toUpperCase();
+        document.getElementById('user-name').textContent = currentUser.username;
+        document.getElementById('user-trust').textContent = `TL${currentUser.trust_level}`;
+
+        loginSection.classList.add('hidden');
+        userSection.classList.remove('hidden');
+
+        // Check quota
+        if (data.quota.used >= data.quota.maxDomains) {
+          registerSection.classList.add('hidden');
+        } else {
+          registerSection.classList.remove('hidden');
+        }
+
+        // Load domain
+        await loadDomain();
+      } catch (e) {
+        // Not logged in
+        loginSection.classList.remove('hidden');
+        userSection.classList.add('hidden');
+        registerSection.classList.add('hidden');
+        domainSection.classList.add('hidden');
+        recordsSection.classList.add('hidden');
+      }
+    }
+
+    // Load domain
+    async function loadDomain() {
+      try {
+        const data = await api('GET', '/api/domains');
+        if (data.domain) {
+          currentDomain = data.domain;
+          document.getElementById('domain-display').textContent = currentDomain.fqdn;
+          document.getElementById('domain-status').textContent = currentDomain.status;
+          document.getElementById('domain-created').textContent =
+            `创建于 ${new Date(currentDomain.created_at).toLocaleDateString('zh-CN')}`;
+
+          registerSection.classList.add('hidden');
+          domainSection.classList.remove('hidden');
+          recordsSection.classList.remove('hidden');
+
+          // Load records
+          await loadRecords();
+        } else {
+          domainSection.classList.add('hidden');
+          recordsSection.classList.add('hidden');
+        }
+      } catch (e) {
+        showError('加载域名失败: ' + e.message);
+      }
+    }
+
+    // Load DNS records
+    async function loadRecords() {
+      const loading = document.getElementById('records-loading');
+      const table = document.getElementById('records-table');
+      const noRecords = document.getElementById('no-records');
+      const tbody = document.getElementById('records-tbody');
+
+      loading.classList.remove('hidden');
+      table.classList.add('hidden');
+      noRecords.classList.add('hidden');
+
+      try {
+        const data = await api('GET', '/api/rrsets');
+        currentRecords = data.rrsets || [];
+
+        loading.classList.add('hidden');
+
+        if (currentRecords.length === 0) {
+          noRecords.classList.remove('hidden');
+          return;
+        }
+
+        // Render records
+        tbody.innerHTML = '';
+        for (const rrset of currentRecords) {
+          for (const record of rrset.records) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td><code>${escapeHtml(rrset.subname || '@')}</code></td>
+              <td>${escapeHtml(rrset.type)}</td>
+              <td>${rrset.ttl}</td>
+              <td><code>${escapeHtml(record)}</code></td>
+              <td>
+                <button class="btn btn-danger btn-sm" onclick="deleteRecord('${escapeHtml(rrset.subname)}', '${escapeHtml(rrset.type)}')">
+                  删除
+                </button>
+              </td>
+            `;
+            tbody.appendChild(tr);
+          }
+        }
+        table.classList.remove('hidden');
+      } catch (e) {
+        loading.classList.add('hidden');
+        showError('加载 DNS 记录失败: ' + e.message);
+      }
+    }
+
+    // Register domain
+    document.getElementById('register-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('register-btn');
+      const input = document.getElementById('label-input');
+      const label = input.value.toLowerCase().trim();
+
+      btn.disabled = true;
+      btn.textContent = '注册中...';
+      clearMessages();
+
+      try {
+        await api('POST', '/api/domains', { label });
+        showSuccess('域名注册成功！');
+        await loadDomain();
+      } catch (e) {
+        showError('注册失败: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '注册域名';
+      }
+    });
+
+    // Delete domain
+    document.getElementById('delete-domain-btn').addEventListener('click', async () => {
+      if (!confirm('确定要删除域名吗？此操作不可恢复，所有 DNS 记录将被删除。')) {
+        return;
+      }
+
+      const btn = document.getElementById('delete-domain-btn');
+      btn.disabled = true;
+      btn.textContent = '删除中...';
+      clearMessages();
+
+      try {
+        await api('DELETE', '/api/domains');
+        showSuccess('域名已删除');
+        currentDomain = null;
+        domainSection.classList.add('hidden');
+        recordsSection.classList.add('hidden');
+        registerSection.classList.remove('hidden');
+      } catch (e) {
+        showError('删除失败: ' + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '删除域名';
+      }
+    });
+
+    // Add record
+    document.getElementById('add-record-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      let subname = document.getElementById('new-subname').value.trim();
+      const type = document.getElementById('new-type').value;
+      const ttl = parseInt(document.getElementById('new-ttl').value, 10);
+      let value = document.getElementById('new-value').value.trim();
+
+      // Normalize subname
+      if (subname === '@') subname = '';
+
+      // For TXT records, ensure proper quoting
+      if (type === 'TXT' && !value.startsWith('"')) {
+        value = `"${value}"`;
+      }
+
+      clearMessages();
+
+      try {
+        // Find existing rrset or create new
+        const existing = currentRecords.find(r => r.subname === subname && r.type === type);
+        const records = existing ? [...existing.records, value] : [value];
+
+        await api('PATCH', '/api/rrsets', {
+          subname,
+          type,
+          ttl,
+          records,
+        });
+
+        showSuccess('记录添加成功');
+        document.getElementById('new-subname').value = '';
+        document.getElementById('new-value').value = '';
+        await loadRecords();
+      } catch (e) {
+        showError('添加记录失败: ' + e.message);
+      }
+    });
+
+    // Delete record
+    async function deleteRecord(subname, type) {
+      if (!confirm(`确定要删除 ${subname || '@'} 的 ${type} 记录吗？`)) {
+        return;
+      }
+
+      clearMessages();
+
+      try {
+        const params = new URLSearchParams({ subname, type });
+        await api('DELETE', `/api/rrsets?${params}`);
+        showSuccess('记录已删除');
+        await loadRecords();
+      } catch (e) {
+        showError('删除记录失败: ' + e.message);
+      }
+    }
+
+    // Initialize
+    checkUrlError();
+    loadUser();
+  </script>
+</body>
 </html>
