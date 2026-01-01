@@ -103,16 +103,24 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   // Parse request body
-  let body: { label?: string };
+  let body: { label?: string; python_praise?: string; usage_purpose?: string };
   try {
     body = await request.json();
   } catch {
     return errorResponse('Invalid JSON body', 400);
   }
 
-  const { label } = body;
+  const { label, python_praise, usage_purpose } = body;
   if (!label || typeof label !== 'string') {
     return errorResponse('Missing or invalid label', 400);
+  }
+
+  if (!python_praise || typeof python_praise !== 'string' || python_praise.length < 20) {
+    return errorResponse('python_praise is required and must be at least 20 characters', 400);
+  }
+
+  if (!usage_purpose || typeof usage_purpose !== 'string' || usage_purpose.length < 10) {
+    return errorResponse('usage_purpose is required and must be at least 10 characters', 400);
   }
 
   // Normalize label to lowercase
@@ -144,9 +152,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const orderNo = generateOrderNo();
     try {
       await env.DB.prepare(`
-        INSERT INTO pending_reviews (order_no, linuxdo_id, label, reason, status, created_at)
-        VALUES (?, ?, ?, ?, 'pending', datetime('now'))
-      `).bind(orderNo, linuxdoId, normalizedLabel, moderationResult.reason).run();
+        INSERT INTO pending_reviews (order_no, linuxdo_id, label, reason, python_praise, usage_purpose, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+      `).bind(orderNo, linuxdoId, normalizedLabel, moderationResult.reason, python_praise, usage_purpose).run();
 
       // Log the action
       await logAudit(env.DB, linuxdoId, 'review_submit', normalizedLabel, {
@@ -171,9 +179,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const orderNo = generateOrderNo();
     try {
       await env.DB.prepare(`
-        INSERT INTO pending_reviews (order_no, linuxdo_id, label, reason, status, created_at)
-        VALUES (?, ?, ?, ?, 'pending', datetime('now'))
-      `).bind(orderNo, linuxdoId, normalizedLabel, '所有注册需要人工审核').run();
+        INSERT INTO pending_reviews (order_no, linuxdo_id, label, reason, python_praise, usage_purpose, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+      `).bind(orderNo, linuxdoId, normalizedLabel, '所有注册需要人工审核', python_praise, usage_purpose).run();
 
       await logAudit(env.DB, linuxdoId, 'review_submit', normalizedLabel, {
         reason: 'manual_review_required',
@@ -271,9 +279,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   // Create order
   try {
     await env.DB.prepare(`
-      INSERT INTO orders (order_no, linuxdo_id, label, amount, status, created_at)
-      VALUES (?, ?, ?, ?, 'pending', datetime('now'))
-    `).bind(orderNo, linuxdoId, normalizedLabel, price).run();
+      INSERT INTO orders (order_no, linuxdo_id, label, amount, python_praise, usage_purpose, status, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+    `).bind(orderNo, linuxdoId, normalizedLabel, price, python_praise, usage_purpose).run();
 
     // Log the action
     await logAudit(env.DB, linuxdoId, 'order_create', orderNo, {

@@ -142,9 +142,9 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
       // No review needed, create domain directly as active
       await env.DB.prepare(`
-        INSERT INTO domains (label, fqdn, owner_linuxdo_id, status, created_at)
-        VALUES (?, ?, ?, 'active', datetime('now'))
-      `).bind(order.label, fqdn, order.linuxdo_id).run();
+        INSERT INTO domains (label, fqdn, owner_linuxdo_id, python_praise, usage_purpose, status, created_at)
+        VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
+      `).bind(order.label, fqdn, order.linuxdo_id, order.python_praise, order.usage_purpose).run();
 
       console.log('[Payment Notify] ✅ Domain created successfully in database');
 

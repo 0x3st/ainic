@@ -491,6 +491,24 @@
             ${escapeHtml(data.owner.username)} (LinuxDO ID: ${data.owner.linuxdo_id})
           </div>
 
+          ${data.python_praise ? `
+          <div class="info-row">
+            <strong>Python 赞美:</strong>
+            <div style="margin-top: 0.5rem; padding: 0.75rem; background: var(--bg); border-radius: 4px; white-space: pre-wrap; line-height: 1.5;">
+              ${escapeHtml(data.python_praise)}
+            </div>
+          </div>
+          ` : ''}
+
+          ${data.usage_purpose ? `
+          <div class="info-row">
+            <strong>使用用途:</strong>
+            <div style="margin-top: 0.5rem; padding: 0.75rem; background: var(--bg); border-radius: 4px; white-space: pre-wrap; line-height: 1.5;">
+              ${escapeHtml(data.usage_purpose)}
+            </div>
+          </div>
+          ` : ''}
+
           ${nsHtml}
         </div>
       `;

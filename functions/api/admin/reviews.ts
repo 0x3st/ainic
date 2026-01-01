@@ -113,9 +113,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       const fqdn = `${review.label}.${baseDomain}`;
 
       await env.DB.prepare(`
-        INSERT INTO domains (label, fqdn, owner_linuxdo_id, status, created_at)
-        VALUES (?, ?, ?, 'active', datetime('now'))
-      `).bind(review.label, fqdn, review.linuxdo_id).run();
+        INSERT INTO domains (label, fqdn, owner_linuxdo_id, python_praise, usage_purpose, status, created_at)
+        VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
+      `).bind(review.label, fqdn, review.linuxdo_id, review.python_praise, review.usage_purpose).run();
 
       // Log the action
       await env.DB.prepare(`

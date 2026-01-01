@@ -54,6 +54,8 @@ export interface Domain {
   owner_linuxdo_id: number;
   status: 'pending' | 'active' | 'suspended' | 'review';
   review_reason: string | null;
+  python_praise: string | null;
+  usage_purpose: string | null;
   created_at: string;
 }
 
@@ -65,6 +67,8 @@ export interface Order {
   linuxdo_id: number;
   label: string;              // 申请的域名标签
   amount: number;             // 积分数量
+  python_praise: string | null;
+  usage_purpose: string | null;
   status: 'pending' | 'paid' | 'failed' | 'refunded';
   created_at: string;
   paid_at: string | null;
@@ -99,6 +103,8 @@ export interface PendingReview {
   linuxdo_id: number;
   label: string;
   reason: string;
+  python_praise: string | null;
+  usage_purpose: string | null;
   status: 'pending' | 'approved' | 'rejected';
   reviewed_by: number | null;
   reviewed_at: string | null;
@@ -132,6 +138,8 @@ export interface DomainResponse {
   fqdn: string;
   status: string;
   nameservers: string[];
+  python_praise?: string;
+  usage_purpose?: string;
   created_at: string;
   review_reason?: string;
 }

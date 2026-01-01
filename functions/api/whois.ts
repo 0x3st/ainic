@@ -14,6 +14,8 @@ interface WhoisDomainInfo {
   };
   status: string;
   created_at: string;
+  python_praise: string | null;
+  usage_purpose: string | null;
   nameservers: string[];
 }
 
@@ -23,6 +25,8 @@ interface DomainQueryResult {
   owner_linuxdo_id: number;
   status: string;
   created_at: string;
+  python_praise: string | null;
+  usage_purpose: string | null;
   username: string | null;
 }
 
@@ -56,7 +60,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     // Query database - JOIN with users table to get username
     // Only query active domains
     const result = await env.DB.prepare(`
-      SELECT d.label, d.fqdn, d.owner_linuxdo_id, d.status, d.created_at, u.username
+      SELECT d.label, d.fqdn, d.owner_linuxdo_id, d.status, d.created_at, d.python_praise, d.usage_purpose, u.username
       FROM domains d
       LEFT JOIN users u ON d.owner_linuxdo_id = u.linuxdo_id
       WHERE d.label = ? AND d.status = 'active'
@@ -80,16 +84,18 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       console.error('Failed to fetch NS records:', error);
     }
 
-    // Build response
+    // Build response - with privacy protection
     const response: WhoisDomainInfo = {
       label: result.label,
       fqdn: result.fqdn,
       owner: {
         linuxdo_id: result.owner_linuxdo_id,
-        username: result.username || '未知用户'
+        username: 'Privacy Protect'
       },
       status: result.status,
       created_at: result.created_at,
+      python_praise: result.python_praise,
+      usage_purpose: result.usage_purpose,
       nameservers
     };
 
