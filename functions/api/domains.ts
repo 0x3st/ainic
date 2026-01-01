@@ -234,7 +234,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         pid: env.CREDIT_PID,
         key: env.CREDIT_KEY,
         notifyUrl: `${url.protocol}//${url.host}/api/payment/notify`,
-        returnUrl: `${url.protocol}//${url.host}/`,
+        returnUrl: `${url.protocol}//${url.host}/api/payment/return`,
       });
 
       const paymentUrl = creditClient.createOrderUrl({
@@ -291,7 +291,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     pid: env.CREDIT_PID,
     key: env.CREDIT_KEY,
     notifyUrl: `${url.protocol}//${url.host}/api/payment/notify`,
-    returnUrl: `${url.protocol}//${url.host}/`,
+    returnUrl: `${url.protocol}//${url.host}/api/payment/return`,
   });
 
   const paymentUrl = creditClient.createOrderUrl({
