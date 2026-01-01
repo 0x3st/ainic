@@ -13,14 +13,20 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
 
   try {
+    console.log('[Admin Banned Words] Fetching banned words...');
+
     const { results } = await env.DB.prepare(
       'SELECT id, word, category, created_at FROM banned_words ORDER BY category, word'
     ).all<BannedWord>();
 
-    return successResponse(results || []);
+    console.log('[Admin Banned Words] Found', results?.length || 0, 'words');
+
+    return successResponse({ words: results || [] });
   } catch (e) {
-    console.error('Failed to get banned words:', e);
-    return errorResponse('Failed to get banned words', 500);
+    console.error('[Admin Banned Words] Error:', e);
+    console.error('[Admin Banned Words] Error message:', e instanceof Error ? e.message : String(e));
+    console.error('[Admin Banned Words] Error stack:', e instanceof Error ? e.stack : 'No stack');
+    return errorResponse(`Failed to get banned words: ${e instanceof Error ? e.message : String(e)}`, 500);
   }
 };
 

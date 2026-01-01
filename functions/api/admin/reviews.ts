@@ -20,9 +20,11 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   try {
     const { results } = await env.DB.prepare(`
-      SELECT pr.id, pr.order_no, pr.linuxdo_id, u.username, pr.label, pr.reason, pr.status, pr.created_at
+      SELECT pr.id, pr.order_no, pr.linuxdo_id, u.username, pr.label, pr.reason, pr.status, pr.created_at,
+             o.status as order_status, o.amount, o.paid_at
       FROM pending_reviews pr
       LEFT JOIN users u ON pr.linuxdo_id = u.linuxdo_id
+      LEFT JOIN orders o ON pr.order_no = o.order_no
       WHERE pr.status = ?
       ORDER BY pr.created_at DESC
       LIMIT ? OFFSET ?
@@ -93,6 +95,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     `).bind(newStatus, adminId, id).run();
 
     if (action === 'approve') {
+      // Check if the order has been paid
+      const order = await env.DB.prepare(
+        'SELECT * FROM orders WHERE order_no = ?'
+      ).bind(review.order_no).first();
+
+      if (!order) {
+        return errorResponse('关联的订单不存在', 400);
+      }
+
+      if (order.status !== 'paid') {
+        return errorResponse('订单尚未支付，无法批准。请等待用户完成支付。', 400);
+      }
+
       // Create domain record
       const baseDomain = env.BASE_DOMAIN || 'py.kg';
       const fqdn = `${review.label}.${baseDomain}`;
@@ -110,7 +125,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         adminId,
         'review_approve',
         fqdn,
-        JSON.stringify({ review_id: id, user_id: review.linuxdo_id }),
+        JSON.stringify({ review_id: id, user_id: review.linuxdo_id, order_no: review.order_no }),
         request.headers.get('CF-Connecting-IP')
       ).run();
     } else {

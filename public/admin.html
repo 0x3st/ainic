@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>py.kg - 管理后台</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --success: #16a34a;
+      --warning: #d97706;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .admin-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 250px;
+      background: var(--card-bg);
+      border-right: 1px solid var(--border);
+      padding: 1.5rem;
+    }
+
+    .sidebar h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+      color: var(--primary);
+    }
+
+    .sidebar p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+    }
+
+    .nav-menu {
+      list-style: none;
+    }
+
+    .nav-item {
+      margin-bottom: 0.5rem;
+    }
+
+    .nav-link {
+      display: block;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      text-decoration: none;
+      color: var(--text);
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .nav-link:hover {
+      background: var(--bg);
+    }
+
+    .nav-link.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .main-content {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+
+    .page {
+      display: none;
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+    }
+
+    .stat-card h3 {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.625rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+
+    .form-group input[type="checkbox"] {
+      width: auto;
+      margin-right: 0.5rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.625rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.2s;
+      margin-right: 0.5rem;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: var(--danger-hover);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-warning {
+      background: var(--warning);
+      color: white;
+    }
+
+    .btn-secondary {
+      background: var(--text-muted);
+      color: white;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      font-weight: 600;
+      background: var(--bg);
+      font-size: 0.875rem;
+    }
+
+    td {
+      font-size: 0.875rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.625rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .badge-success {
+      background: #dcfce7;
+      color: var(--success);
+    }
+
+    .badge-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .badge-warning {
+      background: #fef3c7;
+      color: var(--warning);
+    }
+
+    .badge-info {
+      background: #dbeafe;
+      color: var(--primary);
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .search-bar input {
+      flex: 1;
+    }
+
+    .alert {
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+
+    .alert-success {
+      background: #dcfce7;
+      color: var(--success);
+    }
+
+    .alert-error {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      border-radius: 8px;
+      padding: 2rem;
+      max-width: 500px;
+      width: 90%;
+    }
+
+    .modal-header {
+      margin-bottom: 1rem;
+    }
+
+    .modal-header h3 {
+      font-size: 1.25rem;
+    }
+
+    .modal-footer {
+      margin-top: 1.5rem;
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .action-buttons button {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="loading">正在加载...</div>
+  </div>
+
+  <script>
+    const API_BASE = '';
+    let currentUser = null;
+    let stats = null;
+
+    // 检查管理员权限并初始化
+    async function init() {
+      try {
+        const res = await fetch('/api/me');
+        if (!res.ok) {
+          window.location.href = '/';
+          return;
+        }
+        const data = await res.json();
+        currentUser = data.data.user;
+
+        if (!currentUser.is_admin) {
+          alert('需要管理员权限');
+          window.location.href = '/';
+          return;
+        }
+
+        renderLayout();
+        await loadStats();
+        showPage('dashboard');
+      } catch (error) {
+        console.error('初始化失败:', error);
+        alert('加载失败，请刷新页面重试');
+      }
+    }
+
+    // 渲染布局
+    function renderLayout() {
+      document.getElementById('app').innerHTML = `
+        <div class="admin-layout">
+          <div class="sidebar">
+            <h1>py.kg</h1>
+            <p>管理后台</p>
+            <ul class="nav-menu">
+              <li class="nav-item">
+                <a class="nav-link active" onclick="showPage('dashboard', event)">仪表板</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" onclick="showPage('settings', event)">系统设置</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" onclick="showPage('users', event)">用户管理</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" onclick="showPage('domains', event)">域名管理</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" onclick="showPage('reviews', event)">审核管理</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" onclick="showPage('banned-words', event)">敏感词管理</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/">返回首页</a>
+              </li>
+            </ul>
+          </div>
+          <div class="main-content">
+            <div id="dashboard" class="page active">
+              <div class="loading">加载中...</div>
+            </div>
+            <div id="settings" class="page">
+              <div class="loading">加载中...</div>
+            </div>
+            <div id="users" class="page">
+              <div class="loading">加载中...</div>
+            </div>
+            <div id="domains" class="page">
+              <div class="loading">加载中...</div>
+            </div>
+            <div id="reviews" class="page">
+              <div class="loading">加载中...</div>
+            </div>
+            <div id="banned-words" class="page">
+              <div class="loading">加载中...</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 切换页面
+    function showPage(pageName, event) {
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+
+      const page = document.getElementById(pageName);
+      if (page) {
+        page.classList.add('active');
+
+        // 激活对应的导航链接
+        if (event && event.target) {
+          event.target.classList.add('active');
+        } else {
+          // 没有 event 时，通过 pageName 找到对应的导航链接
+          const navLinks = document.querySelectorAll('.nav-link');
+          navLinks.forEach(link => {
+            if (link.textContent.includes(getPageTitle(pageName))) {
+              link.classList.add('active');
+            }
+          });
+        }
+
+        // 加载页面数据
+        switch(pageName) {
+          case 'dashboard':
+            loadDashboard();
+            break;
+          case 'settings':
+            loadSettings();
+            break;
+          case 'users':
+            loadUsers();
+            break;
+          case 'domains':
+            loadDomains();
+            break;
+          case 'reviews':
+            loadReviews();
+            break;
+          case 'banned-words':
+            loadBannedWords();
+            break;
+        }
+      }
+    }
+
+    function getPageTitle(pageName) {
+      const titles = {
+        'dashboard': '仪表板',
+        'settings': '系统设置',
+        'users': '用户管理',
+        'domains': '域名管理',
+        'reviews': '审核管理',
+        'banned-words': '敏感词管理'
+      };
+      return titles[pageName] || '';
+    }
+
+    // 加载统计数据
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/admin/stats');
+        if (!res.ok) {
+          console.warn('Stats API returned', res.status);
+          // 429 或其他错误时使用默认值
+          stats = {
+            totalUsers: 0,
+            totalDomains: 0,
+            pendingReviews: 0,
+            totalOrders: 0,
+            totalRevenue: 0
+          };
+          return;
+        }
+        const data = await res.json();
+        if (data.success) {
+          stats = data.data;
+        }
+      } catch (error) {
+        console.error('加载统计数据失败:', error);
+        // 使用默认值
+        stats = {
+          totalUsers: 0,
+          totalDomains: 0,
+          pendingReviews: 0,
+          totalOrders: 0,
+          totalRevenue: 0
+        };
+      }
+    }
+
+    // 仪表板页面
+    function loadDashboard() {
+      const page = document.getElementById('dashboard');
+      page.innerHTML = `
+        <h1 style="margin-bottom: 1.5rem;">仪表板</h1>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h3>总用户数</h3>
+            <div class="value">${stats?.totalUsers || 0}</div>
+          </div>
+          <div class="stat-card">
+            <h3>总域名数</h3>
+            <div class="value">${stats?.totalDomains || 0}</div>
+          </div>
+          <div class="stat-card">
+            <h3>待审核</h3>
+            <div class="value">${stats?.pendingReviews || 0}</div>
+          </div>
+          <div class="stat-card">
+            <h3>总订单数</h3>
+            <div class="value">${stats?.totalOrders || 0}</div>
+          </div>
+          <div class="stat-card">
+            <h3>总收入</h3>
+            <div class="value">${stats?.totalRevenue || 0}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    // 系统设置页面
+    async function loadSettings() {
+      const page = document.getElementById('settings');
+      page.innerHTML = '<div class="loading">加载中...</div>';
+
+      try {
+        const res = await fetch('/api/admin/settings');
+        const data = await res.json();
+
+        if (data.success) {
+          const settings = data.data;
+          page.innerHTML = `
+            <h1 style="margin-bottom: 1.5rem;">系统设置</h1>
+            <div id="settings-alert"></div>
+            <div class="card">
+              <h2>基本设置</h2>
+              <form id="settings-form">
+                <div class="form-group">
+                  <label>域名价格 (Credit)</label>
+                  <input type="number" name="domain_price" value="${settings.domain_price}" required min="0" step="1">
+                </div>
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" name="require_review" ${settings.require_review === 'true' ? 'checked' : ''}>
+                    开启人工审核
+                  </label>
+                  <p style="font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem;">
+                    开启后，所有域名注册都需要管理员审核
+                  </p>
+                </div>
+                <div class="form-group">
+                  <label>每用户最大域名数</label>
+                  <input type="number" name="max_domains_per_user" value="${settings.max_domains_per_user}" required min="1" step="1">
+                </div>
+                <button type="submit" class="btn btn-primary">保存设置</button>
+              </form>
+            </div>
+          `;
+
+          document.getElementById('settings-form').addEventListener('submit', saveSettings);
+        }
+      } catch (error) {
+        page.innerHTML = '<div class="alert alert-error">加载失败</div>';
+      }
+    }
+
+    async function saveSettings(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+
+      const settings = {
+        domain_price: formData.get('domain_price'),
+        require_review: formData.get('require_review') ? 'true' : 'false',
+        max_domains_per_user: formData.get('max_domains_per_user')
+      };
+
+      try {
+        const res = await fetch('/api/admin/settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(settings)
+        });
+
+        const data = await res.json();
+        const alertDiv = document.getElementById('settings-alert');
+
+        if (data.success) {
+          alertDiv.innerHTML = '<div class="alert alert-success">设置已保存</div>';
+          setTimeout(() => alertDiv.innerHTML = '', 3000);
+        } else {
+          alertDiv.innerHTML = `<div class="alert alert-error">${data.error || '保存失败'}</div>`;
+        }
+      } catch (error) {
+        document.getElementById('settings-alert').innerHTML = '<div class="alert alert-error">保存失败</div>';
+      }
+    }
+
+    // 用户管理页面
+    async function loadUsers(search = '', filter = 'all') {
+      const page = document.getElementById('users');
+      page.innerHTML = '<div class="loading">加载中...</div>';
+
+      try {
+        const params = new URLSearchParams({ search, filter, limit: 100 });
+        const res = await fetch(`/api/admin/users?${params}`);
+        const data = await res.json();
+
+        if (data.success) {
+          const users = data.data.users;
+          page.innerHTML = `
+            <h1 style="margin-bottom: 1.5rem;">用户管理</h1>
+            <div id="users-alert"></div>
+            <div class="card">
+              <div class="search-bar">
+                <input type="text" id="user-search" placeholder="搜索用户名或LinuxDO ID" value="${search}">
+                <select id="user-filter" value="${filter}">
+                  <option value="all">全部</option>
+                  <option value="banned">已封禁</option>
+                  <option value="admin">管理员</option>
+                </select>
+                <button class="btn btn-primary" onclick="searchUsers()">搜索</button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>LinuxDO ID</th>
+                      <th>用户名</th>
+                      <th>信任等级</th>
+                      <th>状态</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${users.length === 0 ? '<tr><td colspan="5" class="empty-state">无数据</td></tr>' : users.map(user => `
+                      <tr>
+                        <td>${user.linuxdo_id}</td>
+                        <td>${user.username}</td>
+                        <td>TL${user.trust_level}</td>
+                        <td>
+                          ${user.is_banned ? '<span class="badge badge-danger">已封禁</span>' : ''}
+                          ${user.is_admin ? '<span class="badge badge-info">管理员</span>' : ''}
+                        </td>
+                        <td>
+                          <div class="action-buttons">
+                            ${!user.is_banned ? `<button class="btn btn-danger" onclick="banUser(${user.linuxdo_id})">封禁</button>` : `<button class="btn btn-success" onclick="unbanUser(${user.linuxdo_id})">解封</button>`}
+                            ${!user.is_admin ? `<button class="btn btn-primary" onclick="setAdmin(${user.linuxdo_id}, true)">设为管理员</button>` : `<button class="btn btn-secondary" onclick="setAdmin(${user.linuxdo_id}, false)">取消管理员</button>`}
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        page.innerHTML = '<div class="alert alert-error">加载失败</div>';
+      }
+    }
+
+    function searchUsers() {
+      const search = document.getElementById('user-search').value;
+      const filter = document.getElementById('user-filter').value;
+      loadUsers(search, filter);
+    }
+
+    async function banUser(linuxdoId) {
+      const reason = prompt('请输入封禁原因:');
+      if (!reason) return;
+
+      try {
+        const res = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ linuxdo_id: linuxdoId, action: 'ban', reason })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('users-alert', '用户已封禁', 'success');
+          loadUsers();
+        } else {
+          showAlert('users-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('users-alert', '操作失败', 'error');
+      }
+    }
+
+    async function unbanUser(linuxdoId) {
+      try {
+        const res = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ linuxdo_id: linuxdoId, action: 'unban' })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('users-alert', '用户已解封', 'success');
+          loadUsers();
+        } else {
+          showAlert('users-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('users-alert', '操作失败', 'error');
+      }
+    }
+
+    async function setAdmin(linuxdoId, isAdmin) {
+      const action = isAdmin ? 'set_admin' : 'remove_admin';
+
+      try {
+        const res = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ linuxdo_id: linuxdoId, action })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('users-alert', isAdmin ? '已设为管理员' : '已取消管理员', 'success');
+          loadUsers();
+        } else {
+          showAlert('users-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('users-alert', '操作失败', 'error');
+      }
+    }
+
+    // 域名管理页面
+    async function loadDomains(search = '', status = 'all') {
+      const page = document.getElementById('domains');
+      page.innerHTML = '<div class="loading">加载中...</div>';
+
+      try {
+        const params = new URLSearchParams({ search, status, limit: 100 });
+        const res = await fetch(`/api/admin/domains?${params}`);
+        const data = await res.json();
+
+        if (data.success) {
+          const domains = data.data.domains;
+          page.innerHTML = `
+            <h1 style="margin-bottom: 1.5rem;">域名管理</h1>
+            <div id="domains-alert"></div>
+            <div class="card">
+              <div class="search-bar">
+                <input type="text" id="domain-search" placeholder="搜索域名或用户名" value="${search}">
+                <select id="domain-status" value="${status}">
+                  <option value="all">全部</option>
+                  <option value="active">活跃</option>
+                  <option value="suspended">已暂停</option>
+                  <option value="pending">待支付</option>
+                  <option value="review">待审核</option>
+                </select>
+                <button class="btn btn-primary" onclick="searchDomains()">搜索</button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>域名</th>
+                      <th>所有者</th>
+                      <th>状态</th>
+                      <th>创建时间</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${domains.length === 0 ? '<tr><td colspan="5" class="empty-state">无数据</td></tr>' : domains.map(domain => `
+                      <tr>
+                        <td>${domain.fqdn}</td>
+                        <td>${domain.username} (${domain.owner_linuxdo_id})</td>
+                        <td>
+                          ${domain.status === 'active' ? '<span class="badge badge-success">活跃</span>' : ''}
+                          ${domain.status === 'suspended' ? '<span class="badge badge-danger">已暂停</span>' : ''}
+                          ${domain.status === 'pending' ? '<span class="badge badge-warning">待支付</span>' : ''}
+                          ${domain.status === 'review' ? '<span class="badge badge-info">待审核</span>' : ''}
+                        </td>
+                        <td>${new Date(domain.created_at).toLocaleString('zh-CN')}</td>
+                        <td>
+                          <div class="action-buttons">
+                            ${domain.status === 'active' ? `<button class="btn btn-warning" onclick="suspendDomain(${domain.id})">暂停</button>` : ''}
+                            ${domain.status === 'suspended' ? `<button class="btn btn-success" onclick="activateDomain(${domain.id})">激活</button>` : ''}
+                            <button class="btn btn-danger" onclick="deleteDomain(${domain.id})">删除</button>
+                          </div>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        page.innerHTML = '<div class="alert alert-error">加载失败</div>';
+      }
+    }
+
+    function searchDomains() {
+      const search = document.getElementById('domain-search').value;
+      const status = document.getElementById('domain-status').value;
+      loadDomains(search, status);
+    }
+
+    async function suspendDomain(id) {
+      const reason = prompt('请输入暂停原因:');
+      if (!reason) return;
+
+      try {
+        const res = await fetch('/api/admin/domains', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'suspend', reason })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('domains-alert', '域名已暂停', 'success');
+          loadDomains();
+        } else {
+          showAlert('domains-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('domains-alert', '操作失败', 'error');
+      }
+    }
+
+    async function activateDomain(id) {
+      try {
+        const res = await fetch('/api/admin/domains', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'activate' })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('domains-alert', '域名已激活', 'success');
+          loadDomains();
+        } else {
+          showAlert('domains-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('domains-alert', '操作失败', 'error');
+      }
+    }
+
+    async function deleteDomain(id) {
+      if (!confirm('确定要删除此域名吗？此操作不可恢复。')) return;
+
+      try {
+        const res = await fetch('/api/admin/domains', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'delete' })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('domains-alert', '域名已删除', 'success');
+          loadDomains();
+        } else {
+          showAlert('domains-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('domains-alert', '操作失败', 'error');
+      }
+    }
+
+    // 审核管理页面
+    async function loadReviews(status = 'pending') {
+      const page = document.getElementById('reviews');
+      page.innerHTML = '<div class="loading">加载中...</div>';
+
+      try {
+        const params = new URLSearchParams({ status, limit: 100 });
+        const res = await fetch(`/api/admin/reviews?${params}`);
+        const data = await res.json();
+
+        if (data.success) {
+          const reviews = data.data.reviews;
+          page.innerHTML = `
+            <h1 style="margin-bottom: 1.5rem;">审核管理</h1>
+            <div id="reviews-alert"></div>
+            <div class="card">
+              <div class="search-bar">
+                <select id="review-status" value="${status}">
+                  <option value="pending">待审核</option>
+                  <option value="approved">已批准</option>
+                  <option value="rejected">已拒绝</option>
+                </select>
+                <button class="btn btn-primary" onclick="filterReviews()">筛选</button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>域名</th>
+                      <th>用户</th>
+                      <th>原因</th>
+                      <th>支付状态</th>
+                      <th>提交时间</th>
+                      <th>状态</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${reviews.length === 0 ? '<tr><td colspan="7" class="empty-state">无数据</td></tr>' : reviews.map(review => {
+                      const isPaid = review.order_status === 'paid';
+                      const canApprove = review.status === 'pending' && isPaid;
+                      return `
+                      <tr>
+                        <td>${review.label}.py.kg</td>
+                        <td>${review.username} (${review.linuxdo_id})</td>
+                        <td>${review.reason || '-'}</td>
+                        <td>
+                          ${review.order_status === 'paid' ? '<span class="badge badge-success">已支付</span>' : ''}
+                          ${review.order_status === 'pending' ? '<span class="badge badge-warning">待支付</span>' : ''}
+                          ${review.order_status === 'failed' ? '<span class="badge badge-danger">支付失败</span>' : ''}
+                          ${!review.order_status ? '<span class="badge badge-warning">无订单</span>' : ''}
+                        </td>
+                        <td>${new Date(review.created_at).toLocaleString('zh-CN')}</td>
+                        <td>
+                          ${review.status === 'pending' ? '<span class="badge badge-warning">待审核</span>' : ''}
+                          ${review.status === 'approved' ? '<span class="badge badge-success">已批准</span>' : ''}
+                          ${review.status === 'rejected' ? '<span class="badge badge-danger">已拒绝</span>' : ''}
+                        </td>
+                        <td>
+                          ${review.status === 'pending' ? `
+                            <div class="action-buttons">
+                              <button class="btn btn-success" onclick="approveReview(${review.id})" ${!canApprove ? 'disabled title="订单未支付"' : ''}>批准</button>
+                              <button class="btn btn-danger" onclick="rejectReview(${review.id}, false)">拒绝</button>
+                              <button class="btn btn-danger" onclick="rejectReview(${review.id}, true)">拒绝并封禁</button>
+                            </div>
+                          ` : '-'}
+                        </td>
+                      </tr>
+                    `}).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        page.innerHTML = '<div class="alert alert-error">加载失败</div>';
+      }
+    }
+
+    function filterReviews() {
+      const status = document.getElementById('review-status').value;
+      loadReviews(status);
+    }
+
+    async function approveReview(id) {
+      try {
+        const res = await fetch('/api/admin/reviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'approve' })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('reviews-alert', '已批准', 'success');
+          loadReviews();
+          loadStats();
+        } else {
+          showAlert('reviews-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('reviews-alert', '操作失败', 'error');
+      }
+    }
+
+    async function rejectReview(id, banUser) {
+      try {
+        const res = await fetch('/api/admin/reviews', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'reject', banUser })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('reviews-alert', banUser ? '已拒绝并封禁用户' : '已拒绝', 'success');
+          loadReviews();
+          loadStats();
+        } else {
+          showAlert('reviews-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('reviews-alert', '操作失败', 'error');
+      }
+    }
+
+    // 敏感词管理页面
+    async function loadBannedWords() {
+      const page = document.getElementById('banned-words');
+      page.innerHTML = '<div class="loading">加载中...</div>';
+
+      try {
+        const res = await fetch('/api/admin/banned-words');
+        const data = await res.json();
+
+        if (data.success) {
+          const words = data.data.words;
+          page.innerHTML = `
+            <h1 style="margin-bottom: 1.5rem;">敏感词管理</h1>
+            <div id="banned-words-alert"></div>
+            <div class="card">
+              <h2>添加敏感词</h2>
+              <form id="add-word-form">
+                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                  <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label>敏感词</label>
+                    <input type="text" name="word" placeholder="输入敏感词" required>
+                  </div>
+                  <div class="form-group" style="width: 200px; margin-bottom: 0;">
+                    <label>分类</label>
+                    <select name="category">
+                      <option value="general">一般</option>
+                      <option value="reserved">保留词</option>
+                      <option value="inappropriate">不当内容</option>
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-primary">添加</button>
+                </div>
+              </form>
+            </div>
+            <div class="card">
+              <h2>敏感词列表 (${words.length})</h2>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>敏感词</th>
+                      <th>分类</th>
+                      <th>添加时间</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${words.length === 0 ? '<tr><td colspan="4" class="empty-state">无数据</td></tr>' : words.map(word => `
+                      <tr>
+                        <td>${word.word}</td>
+                        <td>
+                          ${word.category === 'reserved' ? '<span class="badge badge-info">保留词</span>' : ''}
+                          ${word.category === 'inappropriate' ? '<span class="badge badge-danger">不当内容</span>' : ''}
+                          ${word.category === 'general' ? '<span class="badge badge-warning">一般</span>' : ''}
+                        </td>
+                        <td>${new Date(word.created_at).toLocaleString('zh-CN')}</td>
+                        <td>
+                          <button class="btn btn-danger" onclick="deleteBannedWord(${word.id})">删除</button>
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+
+          document.getElementById('add-word-form').addEventListener('submit', addBannedWord);
+        }
+      } catch (error) {
+        page.innerHTML = '<div class="alert alert-error">加载失败</div>';
+      }
+    }
+
+    async function addBannedWord(e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+
+      try {
+        const res = await fetch('/api/admin/banned-words', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            word: formData.get('word'),
+            category: formData.get('category')
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('banned-words-alert', '敏感词已添加', 'success');
+          form.reset();
+          loadBannedWords();
+        } else {
+          showAlert('banned-words-alert', data.error || '添加失败', 'error');
+        }
+      } catch (error) {
+        showAlert('banned-words-alert', '添加失败', 'error');
+      }
+    }
+
+    async function deleteBannedWord(id) {
+      if (!confirm('确定要删除此敏感词吗？')) return;
+
+      try {
+        const res = await fetch('/api/admin/banned-words', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('banned-words-alert', '敏感词已删除', 'success');
+          loadBannedWords();
+        } else {
+          showAlert('banned-words-alert', data.error || '删除失败', 'error');
+        }
+      } catch (error) {
+        showAlert('banned-words-alert', '删除失败', 'error');
+      }
+    }
+
+    // 工具函数
+    function showAlert(elementId, message, type) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        element.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+        setTimeout(() => element.innerHTML = '', 3000);
+      }
+    }
+
+    // 初始化
+    init();
+  </script>
+</body>
+</html>

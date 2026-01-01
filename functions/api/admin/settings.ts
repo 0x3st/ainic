@@ -47,7 +47,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     return errorResponse('Invalid JSON body', 400);
   }
 
-  const allowedKeys = ['domain_price', 'require_review'];
+  const allowedKeys = ['domain_price', 'require_review', 'max_domains_per_user'];
 
   try {
     for (const [key, value] of Object.entries(body)) {
@@ -66,6 +66,13 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
       if (key === 'require_review') {
         if (value !== 'true' && value !== 'false') {
           return errorResponse('require_review must be "true" or "false"', 400);
+        }
+      }
+
+      if (key === 'max_domains_per_user') {
+        const max = parseInt(value, 10);
+        if (isNaN(max) || max < 1 || max > 100) {
+          return errorResponse('max_domains_per_user must be between 1 and 100', 400);
         }
       }
 

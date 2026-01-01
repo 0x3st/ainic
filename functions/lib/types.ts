@@ -13,6 +13,7 @@ export interface Env {
   BASE_DOMAIN: string;
   SESSION_COOKIE_NAME?: string;
   ADMIN_LINUXDO_IDS?: string;   // 管理员 LinuxDO ID 列表，逗号分隔
+  ADMIN_SECRET?: string;        // 管理员提升密钥
 }
 
 export interface LinuxDOUser {

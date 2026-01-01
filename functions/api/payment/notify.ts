@@ -73,32 +73,59 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       WHERE order_no = ?
     `).bind(params.trade_no, params.out_trade_no).run();
 
-    // Create domain record
     const baseDomain = env.BASE_DOMAIN || 'py.kg';
     const fqdn = `${order.label}.${baseDomain}`;
 
-    await env.DB.prepare(`
-      INSERT INTO domains (label, fqdn, owner_linuxdo_id, status, created_at)
-      VALUES (?, ?, ?, 'active', datetime('now'))
-    `).bind(order.label, fqdn, order.linuxdo_id).run();
+    // Check if there's a pending review for this order
+    const pendingReview = await env.DB.prepare(
+      'SELECT * FROM pending_reviews WHERE order_no = ? AND status = ?'
+    ).bind(params.out_trade_no, 'pending').first();
 
-    // Log the action
-    await env.DB.prepare(`
-      INSERT INTO audit_logs (linuxdo_id, action, target, details, ip_address, created_at)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-    `).bind(
-      order.linuxdo_id,
-      'domain_register',
-      fqdn,
-      JSON.stringify({
-        order_no: params.out_trade_no,
-        trade_no: params.trade_no,
-        amount: params.money,
-      }),
-      request.headers.get('CF-Connecting-IP')
-    ).run();
+    if (pendingReview) {
+      // If pending review exists, domain will be created after approval
+      // Just log the payment
+      await env.DB.prepare(`
+        INSERT INTO audit_logs (linuxdo_id, action, target, details, ip_address, created_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `).bind(
+        order.linuxdo_id,
+        'order_paid',
+        fqdn,
+        JSON.stringify({
+          order_no: params.out_trade_no,
+          trade_no: params.trade_no,
+          amount: params.money,
+          status: 'pending_review',
+        }),
+        request.headers.get('CF-Connecting-IP')
+      ).run();
 
-    console.log('Domain registered successfully:', fqdn);
+      console.log('Payment successful, domain pending review:', fqdn);
+    } else {
+      // No review needed, create domain directly as active
+      await env.DB.prepare(`
+        INSERT INTO domains (label, fqdn, owner_linuxdo_id, status, created_at)
+        VALUES (?, ?, ?, 'active', datetime('now'))
+      `).bind(order.label, fqdn, order.linuxdo_id).run();
+
+      // Log the action
+      await env.DB.prepare(`
+        INSERT INTO audit_logs (linuxdo_id, action, target, details, ip_address, created_at)
+        VALUES (?, ?, ?, ?, ?, datetime('now'))
+      `).bind(
+        order.linuxdo_id,
+        'domain_register',
+        fqdn,
+        JSON.stringify({
+          order_no: params.out_trade_no,
+          trade_no: params.trade_no,
+          amount: params.money,
+        }),
+        request.headers.get('CF-Connecting-IP')
+      ).run();
+
+      console.log('Domain registered successfully:', fqdn);
+    }
 
   } catch (e) {
     console.error('Failed to process payment:', e);

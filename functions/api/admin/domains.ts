@@ -33,6 +33,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       params.push(status);
     }
 
+    console.log('[Admin Domains] Query params:', { whereClause, params, limit, offset });
+
     const { results } = await env.DB.prepare(`
       SELECT d.id, d.label, d.fqdn, d.owner_linuxdo_id, u.username as owner_username,
              d.status, d.review_reason, d.created_at
@@ -42,6 +44,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       ORDER BY d.created_at DESC
       LIMIT ? OFFSET ?
     `).bind(...params, limit, offset).all<AdminDomainListItem>();
+
+    console.log('[Admin Domains] Results count:', results?.length || 0);
 
     const countResult = await env.DB.prepare(`
       SELECT COUNT(*) as count FROM domains d
@@ -54,8 +58,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       total: countResult?.count || 0,
     });
   } catch (e) {
-    console.error('Failed to get domains:', e);
-    return errorResponse('Failed to get domains', 500);
+    console.error('[Admin Domains] Error:', e);
+    console.error('[Admin Domains] Error message:', e instanceof Error ? e.message : String(e));
+    console.error('[Admin Domains] Error stack:', e instanceof Error ? e.stack : 'No stack');
+    return errorResponse(`Failed to get domains: ${e instanceof Error ? e.message : String(e)}`, 500);
   }
 };
 

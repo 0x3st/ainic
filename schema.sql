@@ -97,6 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_pending_reviews_status ON pending_reviews(status)
 -- Insert default settings
 INSERT OR IGNORE INTO settings (key, value) VALUES ('domain_price', '10');
 INSERT OR IGNORE INTO settings (key, value) VALUES ('require_review', 'false');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('max_domains_per_user', '1');
 
 -- Insert default banned words (common sensitive terms)
 INSERT OR IGNORE INTO banned_words (word, category) VALUES ('admin', 'reserved');

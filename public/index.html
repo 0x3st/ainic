@@ -536,7 +536,8 @@
       }
       // Check for payment return - show info message
       const tradeNo = params.get('trade_no');
-      if (tradeNo) {
+      const fromPayment = params.get('from');
+      if (tradeNo || fromPayment === 'payment') {
         // User returned from payment, show info message
         errorContainer.innerHTML = `<div class="alert alert-info">支付处理中，请稍候刷新页面查看结果...</div>`;
         errorContainer.classList.remove('hidden');

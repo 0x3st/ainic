@@ -90,8 +90,10 @@ wrangler d1 execute pykg-nic-db --remote --file=./schema.sql
 | `JWT_SIGNING_KEY` | JWT 签名密钥（建议 32+ 字符随机字符串） |
 | `CLOUDFLARE_API_TOKEN` | Cloudflare API Token（需要 DNS 编辑权限） |
 | `CLOUDFLARE_ZONE_ID` | py.kg 域名的 Zone ID |
-| `LINUXDO_CREDIT_CLIENT_ID` | LinuxDO Credit 商户 Client ID |
-| `LINUXDO_CREDIT_CLIENT_SECRET` | LinuxDO Credit 商户 Client Secret |
+| `CREDIT_PID` | LinuxDO Credit 商户 Client ID |
+| `CREDIT_KEY` | LinuxDO Credit 商户 Client Secret |
+
+**⚠️ 注意变量名**：支付相关的环境变量名为 `CREDIT_PID` 和 `CREDIT_KEY`（不是 `LINUXDO_CREDIT_CLIENT_ID/SECRET`）
 
 **可选的环境变量：**
 
@@ -100,6 +102,7 @@ wrangler d1 execute pykg-nic-db --remote --file=./schema.sql
 | `BASE_DOMAIN` | `py.kg` | 基础域名 |
 | `SESSION_COOKIE_NAME` | `session` | Session Cookie 名称 |
 | `ADMIN_LINUXDO_IDS` | - | 管理员 LinuxDO ID（逗号分隔） |
+| `ADMIN_SECRET` | - | 管理员提升密钥（用于自助提升） |
 
 生成 JWT 签名密钥：
 ```bash
@@ -129,6 +132,17 @@ npm run deploy
 在 LinuxDO Connect 应用设置中，配置回调地址：
 - 生产环境：`https://nic.py.kg/auth/callback`
 - 测试环境：`https://pykg-nic.pages.dev/auth/callback`
+
+### 7. 配置 LinuxDO Credit 支付回调 ⚠️ 重要
+
+前往 [LinuxDO 集市中心](https://meta.linux.do/market)，在你的 Credit 应用配置中设置：
+
+| 配置项 | 值 | 说明 |
+|--------|-----|------|
+| **异步通知地址 (notify_url)** | `https://nic.py.kg/api/payment/notify` | 用于接收支付成功的服务器回调 |
+| **同步返回地址 (return_url)** | `https://nic.py.kg/api/payment/return` | 用户支付完成后的跳转地址 |
+
+**⚠️ 注意**：LinuxDO Credit 实际使用的是控制台配置的 URL，API 请求中传递的 URL 仅参与签名验证。
 
 ## 本地开发
 
@@ -517,9 +531,11 @@ npm run dev
 
 ### 支付回调失败
 
-1. 检查 LINUXDO_CREDIT_CLIENT_ID 和 LINUXDO_CREDIT_CLIENT_SECRET
-2. 确认支付回调地址可访问
-3. 检查订单状态
+1. 检查 CREDIT_PID 和 CREDIT_KEY 环境变量是否正确配置
+2. 确认 LinuxDO Credit 控制台中的 notify_url 和 return_url 配置正确
+3. 确认支付回调地址可访问（`/api/payment/notify` 和 `/api/payment/return`）
+4. 检查 Cloudflare Pages 函数日志，查看回调是否到达
+5. 检查订单状态（是否已支付但域名未创建）
 
 ### DNS 记录更新失败
 
