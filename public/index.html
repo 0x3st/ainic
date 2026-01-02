@@ -1395,10 +1395,10 @@
         await api('DELETE', '/api/domains');
         showSuccess('域名已删除');
         currentDomain = null;
-        currentNS = [];
-        pendingNS = [];
+        currentDNSRecords = [];
+        currentDNSMode = null;
         domainSection.classList.add('hidden');
-        nsSection.classList.add('hidden');
+        dnsSection.classList.add('hidden');
         registerSection.classList.remove('hidden');
       } catch (e) {
         showError('删除失败: ' + e.message);
