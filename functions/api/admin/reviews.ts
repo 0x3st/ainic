@@ -55,14 +55,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return authResult;
   }
 
-  let body: { id?: number; action?: 'approve' | 'reject'; banUser?: boolean };
+  let body: { id?: number; action?: 'approve' | 'reject'; banUser?: boolean; reason?: string };
   try {
     body = await request.json();
   } catch {
     return errorResponse('Invalid JSON body', 400);
   }
 
-  const { id, action, banUser = false } = body;
+  const { id, action, banUser = false, reason = '' } = body;
 
   if (!id || typeof id !== 'number') {
     return errorResponse('Missing or invalid id', 400);
@@ -133,7 +133,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
           review.linuxdo_id,
           'domain_approved',
           '域名审核通过',
-          `您的域名 ${fqdn} 已通过审核，现在可以正常使用了。`
+          `您的域名 ${fqdn} 已通过审核，现在可以正常使用了。${reason ? `审核备注：${reason}` : ''}`
         );
       } else {
         // Domain doesn't exist (old flow), create it
@@ -177,7 +177,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         review.linuxdo_id,
         'domain_rejected',
         '域名审核未通过',
-        `您的域名 ${review.label}.${env.BASE_DOMAIN || 'py.kg'} 未通过审核。审核原因：${review.reason}`
+        `您的域名 ${review.label}.${env.BASE_DOMAIN || 'py.kg'} 未通过审核。${reason ? `拒绝原因：${reason}` : `审核原因：${review.reason}`}`
       );
 
       // Log the action
@@ -188,7 +188,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         adminId,
         'review_reject',
         review.label,
-        JSON.stringify({ review_id: id, user_id: review.linuxdo_id, ban_user: banUser }),
+        JSON.stringify({ review_id: id, user_id: review.linuxdo_id, ban_user: banUser, reason }),
         request.headers.get('CF-Connecting-IP')
       ).run();
 

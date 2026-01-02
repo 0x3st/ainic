@@ -112,10 +112,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     switch (action) {
       case 'suspend':
-        if (!reason || reason.trim().length < 5) {
-          return errorResponse('暂停原因至少需要5个字符', 400);
-        }
-
         // Get all DNS records for this domain
         const { results: dnsRecords } = await env.DB.prepare(
           'SELECT * FROM dns_records WHERE domain_id = ?'
@@ -196,6 +192,15 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       case 'delete':
         // Delete all DNS records from Cloudflare
         await cfClient.deleteAllRecords(domain.fqdn);
+
+        // Send notification to user about deletion
+        await createNotification(
+          env.DB,
+          domain.owner_linuxdo_id,
+          'domain_suspended', // reuse type for deletion notification
+          '域名已被删除',
+          `您的域名 ${domain.fqdn} 已被管理员删除。${reason ? `删除原因：${reason}` : ''}`
+        );
 
         // Delete from database
         await env.DB.prepare('DELETE FROM domains WHERE id = ?').bind(id).run();

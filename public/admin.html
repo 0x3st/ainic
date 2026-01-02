@@ -910,13 +910,14 @@
     }
 
     async function deleteDomain(id) {
-      if (!confirm('确定要删除此域名吗？此操作不可恢复。')) return;
+      const reason = prompt('请输入删除理由:');
+      if (reason === null) return; // 用户点击取消
 
       try {
         const res = await fetch('/api/admin/domains', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, action: 'delete' })
+          body: JSON.stringify({ id, action: 'delete', reason })
         });
 
         const data = await res.json();
@@ -1070,11 +1071,14 @@
     }
 
     async function approveReview(id) {
+      const reason = prompt('请输入批准理由（可选）:');
+      if (reason === null) return; // 用户点击取消
+
       try {
         const res = await fetch('/api/admin/reviews', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, action: 'approve' })
+          body: JSON.stringify({ id, action: 'approve', reason })
         });
 
         const data = await res.json();
@@ -1091,11 +1095,14 @@
     }
 
     async function rejectReview(id, banUser) {
+      const reason = prompt('请输入拒绝理由:');
+      if (reason === null) return; // 用户点击取消
+
       try {
         const res = await fetch('/api/admin/reviews', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, action: 'reject', banUser })
+          body: JSON.stringify({ id, action: 'reject', banUser, reason })
         });
 
         const data = await res.json();
