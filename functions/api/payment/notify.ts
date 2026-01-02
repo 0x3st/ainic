@@ -73,10 +73,72 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     linuxdo_id: order.linuxdo_id
   });
 
-  // Check if already processed
+  // Check if already processed - but still try to create domain if missing
+  const baseDomain = env.BASE_DOMAIN || 'py.kg';
+  const fqdn = `${order.label}.${baseDomain}`;
+
   if (order.status === 'paid') {
-    console.log('[Payment Notify] Order already paid:', params.out_trade_no);
-    return new Response('success', { status: 200 });
+    console.log('[Payment Notify] Order already paid, checking if domain exists:', params.out_trade_no);
+
+    // Check if domain already exists
+    const existingDomain = await env.DB.prepare(
+      'SELECT * FROM domains WHERE owner_linuxdo_id = ?'
+    ).bind(order.linuxdo_id).first();
+
+    if (existingDomain) {
+      console.log('[Payment Notify] Domain already exists:', existingDomain.fqdn);
+      return new Response('success', { status: 200 });
+    }
+
+    // Domain doesn't exist, try to create it
+    console.log('[Payment Notify] Domain missing, attempting to create...');
+
+    try {
+      // Check if there's a pending review for this order
+      const pendingReview = await env.DB.prepare(
+        'SELECT * FROM pending_reviews WHERE order_no = ?'
+      ).bind(params.out_trade_no).first();
+
+      if (pendingReview && pendingReview.status === 'pending') {
+        // Create domain with 'review' status
+        await env.DB.prepare(`
+          INSERT INTO domains (label, fqdn, owner_linuxdo_id, python_praise, usage_purpose, status, review_reason, created_at)
+          VALUES (?, ?, ?, ?, ?, 'review', ?, datetime('now'))
+        `).bind(order.label, fqdn, order.linuxdo_id, order.python_praise, order.usage_purpose, pendingReview.reason).run();
+
+        console.log('[Payment Notify] ✅ Domain created with review status (recovery):', fqdn);
+
+        await createNotification(
+          env.DB,
+          order.linuxdo_id,
+          'domain_pending_review',
+          '域名创建成功，等待审核',
+          `您的域名 ${fqdn} 已成功创建，正在等待管理员审核。审核原因：${pendingReview.reason}`
+        );
+      } else if (pendingReview && pendingReview.status === 'approved') {
+        // Review already approved, create as active
+        await env.DB.prepare(`
+          INSERT INTO domains (label, fqdn, owner_linuxdo_id, python_praise, usage_purpose, status, created_at)
+          VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
+        `).bind(order.label, fqdn, order.linuxdo_id, order.python_praise, order.usage_purpose).run();
+
+        console.log('[Payment Notify] ✅ Domain created as active (review was approved):', fqdn);
+      } else if (!pendingReview) {
+        // No review needed, create as active
+        await env.DB.prepare(`
+          INSERT INTO domains (label, fqdn, owner_linuxdo_id, python_praise, usage_purpose, status, created_at)
+          VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
+        `).bind(order.label, fqdn, order.linuxdo_id, order.python_praise, order.usage_purpose).run();
+
+        console.log('[Payment Notify] ✅ Domain created as active (recovery):', fqdn);
+      }
+      // If pendingReview.status === 'rejected', don't create domain
+
+      return new Response('success', { status: 200 });
+    } catch (e) {
+      console.error('[Payment Notify] Failed to recover domain creation:', e);
+      return new Response('success', { status: 200 }); // Don't retry, manual intervention needed
+    }
   }
 
   // Verify amount
@@ -105,9 +167,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       trade_no: params.trade_no,
       new_status: 'paid'
     });
-
-    const baseDomain = env.BASE_DOMAIN || 'py.kg';
-    const fqdn = `${order.label}.${baseDomain}`;
 
     console.log('[Payment Notify] 🔍 Checking for pending review...');
 
