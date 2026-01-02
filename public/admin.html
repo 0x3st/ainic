@@ -414,6 +414,9 @@
                 <a class="nav-link" onclick="showPage('reviews', event)">审核管理</a>
               </li>
               <li class="nav-item">
+                <a class="nav-link" onclick="showPage('appeals', event)">申诉管理</a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link" onclick="showPage('reports', event)">举报管理</a>
               </li>
               <li class="nav-item">
@@ -438,6 +441,9 @@
               <div class="loading">加载中...</div>
             </div>
             <div id="reviews" class="page">
+              <div class="loading">加载中...</div>
+            </div>
+            <div id="appeals" class="page">
               <div class="loading">加载中...</div>
             </div>
             <div id="reports" class="page">
@@ -490,6 +496,9 @@
           case 'reviews':
             loadReviews();
             break;
+          case 'appeals':
+            loadAppeals();
+            break;
           case 'reports':
             loadReports();
             break;
@@ -507,6 +516,7 @@
         'users': '用户管理',
         'domains': '域名管理',
         'reviews': '审核管理',
+        'appeals': '申诉管理',
         'reports': '举报管理',
         'banned-words': '敏感词管理'
       };
@@ -1115,6 +1125,126 @@
         }
       } catch (error) {
         showAlert('reviews-alert', '操作失败', 'error');
+      }
+    }
+
+    // 申诉管理页面
+    async function loadAppeals(status = 'pending') {
+      const page = document.getElementById('appeals');
+      page.innerHTML = '<div class="loading">加载中...</div>';
+
+      try {
+        const params = new URLSearchParams({ status, limit: 100 });
+        const res = await fetch(`/api/admin/appeals?${params}`);
+        const data = await res.json();
+
+        if (data.success) {
+          const appeals = data.data.appeals;
+          page.innerHTML = `
+            <h1 style="margin-bottom: 1.5rem;">申诉管理</h1>
+            <div id="appeals-alert"></div>
+            <div class="card">
+              <div class="search-bar">
+                <select id="appeal-status" value="${status}">
+                  <option value="pending">待处理</option>
+                  <option value="approved">已批准</option>
+                  <option value="rejected">已拒绝</option>
+                </select>
+                <button class="btn btn-primary" onclick="filterAppeals()">筛选</button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>域名</th>
+                      <th>用户</th>
+                      <th>申诉原因</th>
+                      <th>提交时间</th>
+                      <th>状态</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${appeals.length === 0 ? '<tr><td colspan="6" class="empty-state">无数据</td></tr>' : appeals.map(appeal => `
+                      <tr>
+                        <td>${appeal.fqdn}</td>
+                        <td>${appeal.username} (${appeal.linuxdo_id})</td>
+                        <td style="max-width: 300px; white-space: pre-wrap; word-break: break-word;">${appeal.reason}</td>
+                        <td>${new Date(appeal.created_at).toLocaleString('zh-CN')}</td>
+                        <td>
+                          ${appeal.status === 'pending' ? '<span class="badge badge-warning">待处理</span>' : ''}
+                          ${appeal.status === 'approved' ? '<span class="badge badge-success">已批准</span>' : ''}
+                          ${appeal.status === 'rejected' ? '<span class="badge badge-danger">已拒绝</span>' : ''}
+                        </td>
+                        <td>
+                          ${appeal.status === 'pending' ? `
+                            <div class="action-buttons">
+                              <button class="btn btn-success btn-sm" onclick="approveAppeal(${appeal.id})">批准（解封）</button>
+                              <button class="btn btn-danger btn-sm" onclick="rejectAppeal(${appeal.id})">拒绝</button>
+                            </div>
+                          ` : '-'}
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        page.innerHTML = '<div class="alert alert-error">加载失败</div>';
+      }
+    }
+
+    function filterAppeals() {
+      const status = document.getElementById('appeal-status').value;
+      loadAppeals(status);
+    }
+
+    async function approveAppeal(id) {
+      const admin_note = prompt('请输入批准备注（可选）:');
+      if (admin_note === null) return;
+
+      try {
+        const res = await fetch('/api/admin/appeals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'approve', admin_note })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('appeals-alert', '申诉已批准，域名已解封', 'success');
+          loadAppeals();
+        } else {
+          showAlert('appeals-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('appeals-alert', '操作失败', 'error');
+      }
+    }
+
+    async function rejectAppeal(id) {
+      const admin_note = prompt('请输入拒绝原因:');
+      if (admin_note === null) return;
+
+      try {
+        const res = await fetch('/api/admin/appeals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'reject', admin_note })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('appeals-alert', '申诉已拒绝', 'success');
+          loadAppeals();
+        } else {
+          showAlert('appeals-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('appeals-alert', '操作失败', 'error');
       }
     }
 

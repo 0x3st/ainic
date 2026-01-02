@@ -970,8 +970,8 @@
             `;
             suspendAlert.classList.remove('hidden');
 
-            // Show appeal section
-            document.getElementById('appeal-section').classList.remove('hidden');
+            // Check if there's a pending appeal and show appropriate section
+            await loadAppealStatus();
 
             // Hide DNS section for suspended domains
             dnsSection.classList.add('hidden');
@@ -1503,8 +1503,70 @@
 
     document.getElementById('mark-all-read-btn').addEventListener('click', markAllAsRead);
 
-    // Appeal functionality
-    document.getElementById('appeal-form').addEventListener('submit', async (e) => {
+    // Load appeal status for suspended domains
+    async function loadAppealStatus() {
+      try {
+        const data = await api('GET', '/api/appeals');
+        const appeals = data.appeals || [];
+        const pendingAppeal = appeals.find(a => a.status === 'pending');
+        const appealSection = document.getElementById('appeal-section');
+
+        if (pendingAppeal) {
+          // Show pending appeal status instead of form
+          appealSection.innerHTML = `
+            <h2>申诉状态</h2>
+            <div class="alert alert-info" style="margin-bottom: 1rem;">
+              <strong>您的申诉正在处理中</strong><br>
+              请耐心等待管理员审核。
+            </div>
+            <div style="margin-bottom: 1rem;">
+              <p><strong>申诉原因：</strong></p>
+              <p style="background: var(--bg); padding: 0.75rem; border-radius: 6px; margin-top: 0.5rem;">${escapeHtml(pendingAppeal.reason)}</p>
+              <p style="color: var(--text-muted); font-size: 0.875rem; margin-top: 0.5rem;">
+                <strong>提交时间：</strong>${new Date(pendingAppeal.created_at).toLocaleString('zh-CN')}
+              </p>
+            </div>
+          `;
+          appealSection.classList.remove('hidden');
+        } else {
+          // Show appeal form
+          appealSection.innerHTML = `
+            <h2>申诉解封</h2>
+            <div class="alert alert-warning" style="margin-bottom: 1rem;">
+              您的域名已被暂停，如果您认为这是误判，可以提交申诉。
+            </div>
+            <form id="appeal-form">
+              <div class="form-group">
+                <label for="appeal-reason">申诉原因 <span style="color: var(--danger);">*</span></label>
+                <textarea
+                  id="appeal-reason"
+                  rows="5"
+                  placeholder="请详细说明您认为域名被暂停的原因不成立，或者您已经整改完成..."
+                  required
+                  minlength="10"
+                  style="width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem; font-family: inherit; resize: vertical;"
+                ></textarea>
+                <small style="color: var(--text-muted); margin-top: 0.25rem; display: block;">
+                  请至少输入 10 个字符
+                </small>
+              </div>
+              <button type="submit" class="btn btn-primary">提交申诉</button>
+            </form>
+          `;
+          appealSection.classList.remove('hidden');
+
+          // Re-attach form submit handler
+          document.getElementById('appeal-form').addEventListener('submit', handleAppealSubmit);
+        }
+      } catch (e) {
+        console.error('Failed to load appeal status:', e);
+        // Show appeal form as fallback
+        document.getElementById('appeal-section').classList.remove('hidden');
+      }
+    }
+
+    // Appeal form submit handler
+    async function handleAppealSubmit(e) {
       e.preventDefault();
       const reason = document.getElementById('appeal-reason').value.trim();
 
@@ -1515,13 +1577,16 @@
 
       try {
         const data = await api('POST', '/api/appeals', { reason });
-        showError(data.message || '申诉已提交', 'success');
-        document.getElementById('appeal-form').reset();
-        document.getElementById('appeal-section').classList.add('hidden');
+        showSuccess(data.message || '申诉已提交');
+        // Reload appeal status to show pending state
+        await loadAppealStatus();
       } catch (e) {
         showError('提交失败: ' + e.message);
       }
-    });
+    }
+
+    // Appeal functionality (initial form handler, will be replaced by loadAppealStatus)
+    document.getElementById('appeal-form').addEventListener('submit', handleAppealSubmit);
 
     // Continue payment for pending order
     document.getElementById('continue-pay-btn').addEventListener('click', async () => {
