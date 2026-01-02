@@ -20,10 +20,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const { user } = authResult;
   const linuxdoId = parseInt(user.sub, 10);
 
-  // Get user's domain (only active ones)
+  // Get user's domain (active, suspended, or pending review)
   const domain = await env.DB.prepare(
-    'SELECT * FROM domains WHERE owner_linuxdo_id = ? AND status = ?'
-  ).bind(linuxdoId, 'active').first<Domain>();
+    'SELECT * FROM domains WHERE owner_linuxdo_id = ? AND status IN (?, ?, ?)'
+  ).bind(linuxdoId, 'active', 'suspended', 'review').first<Domain>();
 
   if (!domain) {
     // Check if there's a pending review
@@ -82,6 +82,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     dns_records: dnsRecords || [],
     created_at: domain.created_at,
     review_reason: domain.review_reason || undefined,
+    suspend_reason: domain.suspend_reason || undefined,
   };
 
   return successResponse({ domain: response });
@@ -107,6 +108,15 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   if (dbUser?.is_banned) {
     return errorResponse(`您的账户已被封禁: ${dbUser.ban_reason || '违规操作'}`, 403);
+  }
+
+  // Check if user has any suspended domains
+  const suspendedDomain = await env.DB.prepare(
+    'SELECT * FROM domains WHERE owner_linuxdo_id = ? AND status = ?'
+  ).bind(linuxdoId, 'suspended').first<Domain>();
+
+  if (suspendedDomain) {
+    return errorResponse(`您有域名已被暂停，无法注册新域名。暂停原因: ${suspendedDomain.suspend_reason || '违规操作'}`, 403);
   }
 
   // Parse request body
@@ -155,13 +165,27 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return errorResponse(`您的账户因滥用已被封禁: ${abuseCheck.reason}`, 403);
     }
 
-    // Create pending review
+    // Need review - create pending review and order
     const orderNo = generateOrderNo();
+    const baseDomain = env.BASE_DOMAIN || 'py.kg';
+    const fqdn = `${normalizedLabel}.${baseDomain}`;
+
+    // Get price
+    const priceFromDb = await getSetting('domain_price', env.DB, '');
+    const price = parseFloat(priceFromDb || env.DOMAIN_PRICE || '10');
+
     try {
+      // Create pending review
       await env.DB.prepare(`
         INSERT INTO pending_reviews (order_no, linuxdo_id, label, reason, python_praise, usage_purpose, status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
       `).bind(orderNo, linuxdoId, normalizedLabel, moderationResult.reason, python_praise, usage_purpose).run();
+
+      // Create order
+      await env.DB.prepare(`
+        INSERT INTO orders (order_no, linuxdo_id, label, amount, python_praise, usage_purpose, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+      `).bind(orderNo, linuxdoId, normalizedLabel, price, python_praise, usage_purpose).run();
 
       // Log the action
       await logAudit(env.DB, linuxdoId, 'review_submit', normalizedLabel, {
@@ -170,9 +194,26 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         category: moderationResult.category,
       }, getClientIP(request));
 
-      return successResponse({
+      // Generate payment form
+      const url = new URL(request.url);
+      const creditClient = new LinuxDOCreditClient({
+        pid: env.CREDIT_PID,
+        key: env.CREDIT_KEY,
+        notifyUrl: `${url.protocol}//${url.host}/api/payment/notify`,
+        returnUrl: `${url.protocol}//${url.host}/api/payment/return`,
+      });
+
+      const formData = creditClient.createOrderParams({
+        outTradeNo: orderNo,
+        name: `PY.KG 子域名: ${fqdn}（需审核）`,
+        money: price,
+      });
+
+      return successResponse<CreateOrderResponse>({
+        order_no: orderNo,
+        submit_url: creditClient.getSubmitUrl(),
+        form_data: formData,
         requires_review: true,
-        message: '您的域名申请需要人工审核，请耐心等待。',
       });
     } catch (e) {
       console.error('Failed to create review:', e);
@@ -184,19 +225,50 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const requireReview = await getSetting('require_review', env.DB, 'false');
   if (requireReview === 'true') {
     const orderNo = generateOrderNo();
+    const baseDomain = env.BASE_DOMAIN || 'py.kg';
+    const fqdn = `${normalizedLabel}.${baseDomain}`;
+
+    // Get price
+    const priceFromDb = await getSetting('domain_price', env.DB, '');
+    const price = parseFloat(priceFromDb || env.DOMAIN_PRICE || '10');
+
     try {
+      // Create pending review
       await env.DB.prepare(`
         INSERT INTO pending_reviews (order_no, linuxdo_id, label, reason, python_praise, usage_purpose, status, created_at)
         VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
       `).bind(orderNo, linuxdoId, normalizedLabel, '所有注册需要人工审核', python_praise, usage_purpose).run();
 
+      // Create order
+      await env.DB.prepare(`
+        INSERT INTO orders (order_no, linuxdo_id, label, amount, python_praise, usage_purpose, status, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, 'pending', datetime('now'))
+      `).bind(orderNo, linuxdoId, normalizedLabel, price, python_praise, usage_purpose).run();
+
       await logAudit(env.DB, linuxdoId, 'review_submit', normalizedLabel, {
         reason: 'manual_review_required',
       }, getClientIP(request));
 
-      return successResponse({
+      // Generate payment form
+      const url = new URL(request.url);
+      const creditClient = new LinuxDOCreditClient({
+        pid: env.CREDIT_PID,
+        key: env.CREDIT_KEY,
+        notifyUrl: `${url.protocol}//${url.host}/api/payment/notify`,
+        returnUrl: `${url.protocol}//${url.host}/api/payment/return`,
+      });
+
+      const formData = creditClient.createOrderParams({
+        outTradeNo: orderNo,
+        name: `PY.KG 子域名: ${fqdn}（需审核）`,
+        money: price,
+      });
+
+      return successResponse<CreateOrderResponse>({
+        order_no: orderNo,
+        submit_url: creditClient.getSubmitUrl(),
+        form_data: formData,
         requires_review: true,
-        message: '您的域名申请需要人工审核，请耐心等待。',
       });
     } catch (e) {
       console.error('Failed to create review:', e);
@@ -206,10 +278,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   // Check if user already has an active domain
   const existingDomain = await env.DB.prepare(
-    'SELECT * FROM domains WHERE owner_linuxdo_id = ? AND status = ?'
-  ).bind(linuxdoId, 'active').first<Domain>();
+    'SELECT * FROM domains WHERE owner_linuxdo_id = ? AND status IN (?, ?)'
+  ).bind(linuxdoId, 'active', 'review').first<Domain>();
 
   if (existingDomain) {
+    if (existingDomain.status === 'review') {
+      return errorResponse('您已有一个待审核的域名，请等待审核完成。', 409);
+    }
     return errorResponse('You already have a registered domain. Each user can only register one domain.', 409);
   }
 
@@ -338,11 +413,20 @@ export const onRequestDelete: PagesFunction<Env> = async (context) => {
 
   // Get user's domain
   const domain = await env.DB.prepare(
-    'SELECT * FROM domains WHERE owner_linuxdo_id = ? AND status = ?'
-  ).bind(linuxdoId, 'active').first<Domain>();
+    'SELECT * FROM domains WHERE owner_linuxdo_id = ? AND status IN (?, ?, ?)'
+  ).bind(linuxdoId, 'active', 'suspended', 'review').first<Domain>();
 
   if (!domain) {
     return errorResponse('You do not have a registered domain', 404);
+  }
+
+  // Prevent deletion of suspended or pending review domains
+  if (domain.status === 'suspended') {
+    return errorResponse(`您的域名已被暂停，无法删除。暂停原因: ${domain.suspend_reason || '违规操作'}`, 403);
+  }
+
+  if (domain.status === 'review') {
+    return errorResponse('您的域名正在审核中，无法删除。', 403);
   }
 
   // Delete NS records from Cloudflare

@@ -158,6 +158,7 @@ export interface DomainResponse {
   usage_purpose?: string;
   created_at: string;
   review_reason?: string;
+  suspend_reason?: string;
 }
 
 export interface CreateOrderResponse {
@@ -205,5 +206,34 @@ export interface AdminReviewListItem {
   label: string;
   reason: string;
   status: string;
+  created_at: string;
+  python_praise: string | null;
+  usage_purpose: string | null;
+  order_status?: string;
+  amount?: number;
+  paid_at?: string;
+}
+
+// Notification types
+export interface Notification {
+  id: number;
+  linuxdo_id: number;
+  type: 'domain_pending_review' | 'domain_approved' | 'domain_rejected' | 'domain_suspended' | 'domain_unsuspended' | 'report_processed';
+  title: string;
+  message: string;
+  is_read: number;
+  created_at: string;
+}
+
+// Appeal types
+export interface Appeal {
+  id: number;
+  domain_id: number;
+  linuxdo_id: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by: number | null;
+  reviewed_at: string | null;
+  admin_note: string | null;
   created_at: string;
 }

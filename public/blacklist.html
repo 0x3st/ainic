@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小黑屋 - PY.KG</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --danger: #dc2626;
+      --danger-hover: #b91c1c;
+      --success: #16a34a;
+      --warning: #d97706;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    header h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: var(--danger);
+    }
+
+    header p {
+      color: var(--text-muted);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card h2 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.625rem 1.25rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.2s;
+    }
+
+    .btn-secondary {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      background: #cbd5e1;
+    }
+
+    .alert {
+      padding: 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+
+    .alert-error {
+      background: #fef2f2;
+      color: var(--danger);
+      border: 1px solid #fecaca;
+    }
+
+    .alert-info {
+      background: #eff6ff;
+      color: var(--primary);
+      border: 1px solid #bfdbfe;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    th, td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      font-weight: 600;
+      background: var(--bg);
+      font-size: 0.875rem;
+    }
+
+    td {
+      font-size: 0.875rem;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.125rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .badge-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-muted);
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>小黑屋</h1>
+      <p>违规用户名单</p>
+    </header>
+
+    <div id="message-container" class="hidden"></div>
+
+    <div class="card">
+      <div class="alert alert-info">
+        <strong>说明：</strong>以下用户因违反 PY.KG 服务条款被封禁，已永久禁止注册域名。
+      </div>
+
+      <div id="blacklist-content">
+        <div class="loading">加载中...</div>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        <a href="/">返回首页</a> | <a href="/whois.html">WHOIS 查询</a>
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // Show message
+    function showMessage(message, type = 'error') {
+      const messageContainer = document.getElementById('message-container');
+      const alertClass = type === 'error' ? 'alert-error' : 'alert-info';
+      messageContainer.innerHTML = `<div class="alert ${alertClass}">${escapeHtml(message)}</div>`;
+      messageContainer.classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Load blacklist
+    async function loadBlacklist() {
+      try {
+        const response = await fetch('/api/blacklist');
+        const data = await response.json();
+
+        if (!data.success) {
+          showMessage(data.error || '加载失败', 'error');
+          return;
+        }
+
+        const users = data.data.users;
+        const content = document.getElementById('blacklist-content');
+
+        if (users.length === 0) {
+          content.innerHTML = '<div class="empty-state">暂无封禁用户</div>';
+          return;
+        }
+
+        content.innerHTML = `
+          <h2>封禁用户列表 (${users.length})</h2>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>用户名</th>
+                  <th>封禁原因</th>
+                  <th>封禁时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${users.map(user => `
+                  <tr>
+                    <td>
+                      <span class="badge badge-danger">${escapeHtml(user.username)}</span>
+                    </td>
+                    <td>${escapeHtml(user.ban_reason || '违规操作')}</td>
+                    <td>${new Date(user.updated_at).toLocaleString('zh-CN')}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } catch (e) {
+        showMessage('加载失败: ' + e.message, 'error');
+      }
+    }
+
+    // Initialize
+    loadBlacklist();
+  </script>
+</body>
+</html>

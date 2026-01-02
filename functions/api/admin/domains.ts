@@ -1,8 +1,9 @@
 // /api/admin/domains - Domain management
 
-import type { Env, Domain, AdminDomainListItem } from '../../lib/types';
+import type { Env, Domain, AdminDomainListItem, DnsRecord } from '../../lib/types';
 import { requireAdmin, successResponse, errorResponse } from '../../lib/auth';
 import { CloudflareDNSClient } from '../../lib/cloudflare-dns';
+import { createNotification } from '../../lib/notifications';
 
 // GET /api/admin/domains - Get domains list
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -111,26 +112,92 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     switch (action) {
       case 'suspend':
+        if (!reason || reason.trim().length < 5) {
+          return errorResponse('暂停原因至少需要5个字符', 400);
+        }
+
+        // Get all DNS records for this domain
+        const { results: dnsRecords } = await env.DB.prepare(
+          'SELECT * FROM dns_records WHERE domain_id = ?'
+        ).bind(id).all<DnsRecord>();
+
         // Delete all DNS records from Cloudflare
         await cfClient.deleteAllRecords(domain.fqdn);
 
+        // Mark all DNS records as not synced in database (keep them as evidence)
+        if (dnsRecords && dnsRecords.length > 0) {
+          await env.DB.prepare(
+            'UPDATE dns_records SET cf_synced = 0 WHERE domain_id = ?'
+          ).bind(id).run();
+        }
+
+        // Update domain status to suspended
         await env.DB.prepare(`
-          UPDATE domains SET status = 'suspended', review_reason = ?
+          UPDATE domains SET status = 'suspended', suspend_reason = ?
           WHERE id = ?
-        `).bind(reason || '管理员暂停', id).run();
+        `).bind(reason.trim(), id).run();
+
+        // Send notification to user
+        await createNotification(
+          env.DB,
+          domain.owner_linuxdo_id,
+          'domain_suspended',
+          '域名已被暂停',
+          `您的域名 ${domain.fqdn} 已被暂停使用。暂停原因：${reason.trim()}`
+        );
         break;
 
       case 'activate':
+        // Get all DNS records that need to be restored
+        const { results: recordsToRestore } = await env.DB.prepare(
+          'SELECT * FROM dns_records WHERE domain_id = ? AND cf_synced = 0'
+        ).bind(id).all<DnsRecord>();
+
+        // Restore DNS records to Cloudflare
+        if (recordsToRestore && recordsToRestore.length > 0) {
+          for (const record of recordsToRestore) {
+            try {
+              const dnsName = record.name === '@' ? domain.fqdn : `${record.name}.${domain.fqdn}`;
+              await cfClient.createDNSRecord(
+                record.type,
+                dnsName,
+                record.content,
+                record.ttl,
+                record.proxied === 1
+              );
+            } catch (e) {
+              console.error(`Failed to restore DNS record ${record.id}:`, e);
+              // Continue with other records even if one fails
+            }
+          }
+
+          // Mark all records as synced
+          await env.DB.prepare(
+            'UPDATE dns_records SET cf_synced = 1 WHERE domain_id = ?'
+          ).bind(id).run();
+        }
+
+        // Update domain status to active
         await env.DB.prepare(`
-          UPDATE domains SET status = 'active', review_reason = NULL
+          UPDATE domains SET status = 'active', suspend_reason = NULL
           WHERE id = ?
         `).bind(id).run();
+
+        // Send notification to user
+        await createNotification(
+          env.DB,
+          domain.owner_linuxdo_id,
+          'domain_unsuspended',
+          '域名已解除暂停',
+          `您的域名 ${domain.fqdn} 已解除暂停，现在可以正常使用了。`
+        );
         break;
 
       case 'delete':
         // Delete all DNS records from Cloudflare
         await cfClient.deleteAllRecords(domain.fqdn);
 
+        // Delete from database
         await env.DB.prepare('DELETE FROM domains WHERE id = ?').bind(id).run();
         break;
     }

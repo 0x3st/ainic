@@ -2,6 +2,7 @@
 
 import type { Env, Order } from '../../lib/types';
 import { LinuxDOCreditClient, NotifyParams } from '../../lib/credit';
+import { createNotification } from '../../lib/notifications';
 
 // GET /api/payment/notify - Handle payment callback from LinuxDO Credit
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -116,10 +117,26 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     ).bind(params.out_trade_no, 'pending').first();
 
     if (pendingReview) {
-      console.log('[Payment Notify] ⚠️ Domain requires manual review');
+      console.log('[Payment Notify] ⚠️ Domain requires manual review, creating domain with review status');
 
-      // If pending review exists, domain will be created after approval
-      // Just log the payment
+      // Create domain immediately with 'review' status
+      await env.DB.prepare(`
+        INSERT INTO domains (label, fqdn, owner_linuxdo_id, python_praise, usage_purpose, status, review_reason, created_at)
+        VALUES (?, ?, ?, ?, ?, 'review', ?, datetime('now'))
+      `).bind(order.label, fqdn, order.linuxdo_id, order.python_praise, order.usage_purpose, pendingReview.reason).run();
+
+      console.log('[Payment Notify] ✅ Domain created with review status:', fqdn);
+
+      // Send notification to user
+      await createNotification(
+        env.DB,
+        order.linuxdo_id,
+        'domain_pending_review',
+        '域名创建成功，等待审核',
+        `您的域名 ${fqdn} 已成功创建，正在等待管理员审核。审核原因：${pendingReview.reason}`
+      );
+
+      // Log the payment
       await env.DB.prepare(`
         INSERT INTO audit_logs (linuxdo_id, action, target, details, ip_address, created_at)
         VALUES (?, ?, ?, ?, ?, datetime('now'))

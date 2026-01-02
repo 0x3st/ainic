@@ -263,6 +263,95 @@
       padding: 0.25rem;
     }
 
+    .dns-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.875rem;
+    }
+
+    .dns-table thead {
+      background: var(--bg);
+    }
+
+    .dns-table th {
+      padding: 0.75rem 0.5rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+    }
+
+    .dns-table td {
+      padding: 0.75rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .dns-table tbody tr:hover {
+      background: var(--bg);
+    }
+
+    .dns-table .type-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background: #dbeafe;
+      color: #1e40af;
+      border-radius: 4px;
+      font-weight: 500;
+      font-size: 0.75rem;
+    }
+
+    .dns-table .proxy-icon {
+      font-size: 1.1rem;
+    }
+
+    .dns-table .record-name {
+      font-family: monospace;
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .dns-table .record-content {
+      font-family: monospace;
+      word-break: break-all;
+    }
+
+    .dns-table .action-btn {
+      background: none;
+      border: none;
+      color: var(--danger);
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      font-size: 1rem;
+    }
+
+    .dns-table .action-btn:hover {
+      color: var(--danger-hover);
+    }
+
+    .dns-form-grid {
+      display: grid;
+      grid-template-columns: 100px 150px 1fr;
+      gap: 0.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 768px) {
+      .dns-table {
+        font-size: 0.75rem;
+      }
+
+      .dns-table th,
+      .dns-table td {
+        padding: 0.5rem 0.25rem;
+      }
+
+      .dns-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .ns-input-row {
       display: flex;
       gap: 0.5rem;
@@ -364,8 +453,53 @@
             <span class="badge badge-success" id="user-trust">TL?</span>
           </div>
         </div>
-        <a href="/auth/logout" class="btn btn-secondary">退出登录</a>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button class="btn btn-secondary btn-sm" id="notifications-btn" style="position: relative;">
+            通知
+            <span id="unread-badge" class="hidden" style="position: absolute; top: -5px; right: -5px; background: var(--danger); color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center;"></span>
+          </button>
+          <a href="/auth/logout" class="btn btn-secondary">退出登录</a>
+        </div>
       </div>
+    </div>
+
+    <!-- Notifications panel -->
+    <div id="notifications-panel" class="card hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">消息通知</h2>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-secondary btn-sm" id="mark-all-read-btn">全部标记已读</button>
+          <button class="btn btn-secondary btn-sm" id="close-notifications-btn">关闭</button>
+        </div>
+      </div>
+      <div id="notifications-list">
+        <div class="loading">加载中...</div>
+      </div>
+    </div>
+
+    <!-- Appeal submission panel (shown when domain is suspended) -->
+    <div id="appeal-section" class="card hidden">
+      <h2>申诉解封</h2>
+      <div class="alert alert-warning" style="margin-bottom: 1rem;">
+        您的域名已被暂停，如果您认为这是误判，可以提交申诉。
+      </div>
+      <form id="appeal-form">
+        <div class="form-group">
+          <label for="appeal-reason">申诉原因 <span style="color: var(--danger);">*</span></label>
+          <textarea
+            id="appeal-reason"
+            rows="5"
+            placeholder="请详细说明您认为域名被暂停的原因不成立，或者您已经整改完成..."
+            required
+            minlength="10"
+            style="width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem; font-family: inherit; resize: vertical;"
+          ></textarea>
+          <small style="color: var(--text-muted); margin-top: 0.25rem; display: block;">
+            请至少输入 10 个字符
+          </small>
+        </div>
+        <button type="submit" class="btn btn-primary">提交申诉</button>
+      </form>
     </div>
 
     <!-- Domain registration section -->
@@ -399,6 +533,34 @@
     <div id="register-detail-section" class="card hidden">
       <h2>完善注册信息</h2>
       <div class="domain-display" id="register-domain-display">加载中...</div>
+
+      <!-- Service Terms -->
+      <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--bg); border-left: 3px solid var(--danger); border-radius: 4px;">
+        <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--danger);">PY.KG 服务条款</h3>
+        <div style="font-size: 0.875rem; line-height: 1.6; color: var(--text);">
+          <p style="margin-bottom: 0.5rem;"><strong>使用规范：</strong></p>
+          <ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+            <li>严禁将域名用于任何非法网站、非法服务或违法活动</li>
+            <li>严禁发布、传播违法违规内容（包括但不限于色情、赌博、诈骗、暴力、恐怖主义等）</li>
+            <li>严禁利用域名进行网络攻击、钓鱼、诈骗、传播病毒木马等恶意行为</li>
+            <li>严禁滥用域名资源，包括恶意抢注、倒卖、囤积等行为</li>
+            <li>严禁发布虚假信息或用于误导性用途</li>
+            <li>需遵守中华人民共和国相关法律法规及当地法律法规</li>
+          </ul>
+          <p style="margin-bottom: 0.5rem;"><strong style="color: var(--danger);">违规处理：</strong></p>
+          <ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">
+            <li>一经发现违规行为，管理员有权立即删除域名记录</li>
+            <li>违规用户将被加入黑名单，永久禁止注册</li>
+            <li>已支付费用概不退还</li>
+            <li>严重违规行为将向有关部门报告</li>
+          </ul>
+          <p style="margin-bottom: 0.5rem;"><strong>社区文化：</strong></p>
+          <p style="margin-bottom: 0;">让我们践行 LINUX DO 的社区文化：</p>
+          <p style="margin: 0.5rem 0; font-weight: 600; font-size: 0.95rem;">真诚、友善、团结、专业</p>
+          <p style="margin: 0;">共建你我引以为荣之社区。</p>
+        </div>
+      </div>
+
       <form id="register-detail-form">
         <div class="form-group">
           <label for="python-praise-input">
@@ -413,7 +575,7 @@
             style="width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem; font-family: inherit; resize: vertical;"
           ></textarea>
           <small style="color: var(--text-muted); margin-top: 0.25rem; display: block;">
-            请至少输入 20 个字符，表达您对 Python 的爱慕之情
+            请至少输入 20 个字符
           </small>
         </div>
         <div class="form-group">
@@ -429,14 +591,37 @@
             style="width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem; font-family: inherit; resize: vertical;"
           ></textarea>
           <small style="color: var(--text-muted); margin-top: 0.25rem; display: block;">
-            请简要说明域名的使用用途
+            请如实说明域名用途。内容不实或违背使用条款将会拒绝注册申请。
           </small>
+        </div>
+        <div class="form-group">
+          <label style="display: flex; align-items: start; cursor: pointer;">
+            <input type="checkbox" id="terms-checkbox" required style="margin-top: 0.25rem; margin-right: 0.5rem; width: 18px; height: 18px; cursor: pointer;">
+            <span style="font-size: 0.875rem;">
+              我已阅读并同意 <strong style="color: var(--danger);">PY.KG 服务条款</strong>，承诺遵守使用规范，如有违规愿意承担相应后果。
+            </span>
+          </label>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <button type="submit" class="btn btn-primary" id="pay-btn">支付并完成注册</button>
           <button type="button" class="btn btn-secondary" id="back-to-label-btn">返回修改域名</button>
         </div>
       </form>
+    </div>
+
+    <!-- Pending review section (shown when domain is pending review but not yet created) -->
+    <div id="pending-review-section" class="card hidden">
+      <h2>域名待审核</h2>
+      <div class="alert alert-info" style="margin-bottom: 1rem;">
+        <strong>您的域名注册申请正在等待管理员审核</strong><br>
+        审核通过后域名将自动激活，届时您可以配置 DNS 记录。
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <p><strong>申请域名：</strong><span id="pending-review-label">--</span>.PY.KG</p>
+        <p><strong>审核原因：</strong><span id="pending-review-reason">--</span></p>
+        <p style="color: var(--text-muted); font-size: 0.875rem;"><strong>提交时间：</strong><span id="pending-review-created">--</span></p>
+      </div>
+      <button class="btn btn-secondary" id="refresh-review-status-btn">刷新状态</button>
     </div>
 
     <!-- Pending order section -->
@@ -461,6 +646,7 @@
     <!-- Domain management section -->
     <div id="domain-section" class="card hidden">
       <h2>我的域名</h2>
+      <div id="suspend-alert" class="hidden"></div>
       <div class="domain-display" id="domain-display">加载中...</div>
       <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
         <span class="badge badge-success" id="domain-status">active</span>
@@ -491,27 +677,34 @@
       <div id="dns-content" class="hidden">
         <div class="form-group">
           <label>当前 DNS 记录 <span id="dns-mode-badge"></span></label>
-          <ul class="ns-list" id="dns-list">
-            <li style="color: var(--text-muted);">暂无 DNS 记录</li>
-          </ul>
+          <div id="dns-records-container">
+            <p style="color: var(--text-muted); padding: 1rem;">暂无 DNS 记录</p>
+          </div>
         </div>
 
         <div class="form-group">
           <label>添加 DNS 记录</label>
-          <div style="margin-bottom: 0.5rem;">
-            <select id="dns-type-select" style="width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem;">
-              <option value="A">A - IPv4 地址</option>
-              <option value="AAAA">AAAA - IPv6 地址</option>
-              <option value="CNAME">CNAME - 别名</option>
-              <option value="NS">NS - 名称服务器</option>
-            </select>
+          <div class="dns-form-grid">
+            <div>
+              <label style="display: block; font-size: 0.75rem; margin-bottom: 0.25rem; color: var(--text-muted);">Type</label>
+              <select id="dns-type-select" style="width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem;">
+                <option value="A">A</option>
+                <option value="AAAA">AAAA</option>
+                <option value="CNAME">CNAME</option>
+                <option value="NS">NS</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.75rem; margin-bottom: 0.25rem; color: var(--text-muted);">Name</label>
+              <input type="text" id="dns-name-input" placeholder="@" style="width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem; font-family: monospace;">
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.75rem; margin-bottom: 0.25rem; color: var(--text-muted);">Content</label>
+              <input type="text" id="dns-content-input" placeholder="1.2.3.4" style="width: 100%; padding: 0.625rem; border: 1px solid var(--border); border-radius: 6px; font-size: 0.875rem; font-family: monospace;">
+            </div>
           </div>
-          <div class="ns-input-row">
-            <input type="text" id="dns-content-input" placeholder="1.2.3.4">
-            <button type="button" class="btn btn-secondary btn-sm" id="add-dns-btn">添加</button>
-          </div>
-          <p class="help-text" id="dns-type-hint">
-            输入 IPv4 地址，例如：1.2.3.4
+          <p class="help-text" id="dns-type-hint" style="margin-top: 0.5rem;">
+            @ 表示根域名，或输入子域名（如 blog、api）来创建 blog.your-domain.py.kg
           </p>
 
           <div style="margin-top: 1rem; padding: 1rem; background: var(--bg); border-radius: 6px;">
@@ -519,9 +712,9 @@
               <label style="display: flex; align-items: center; cursor: pointer;">
                 <input type="checkbox" id="dns-proxy-checkbox" style="margin-right: 0.5rem; width: 18px; height: 18px; cursor: pointer;">
                 <span>
-                  <strong>启用 Cloudflare CDN/Proxy 🟠</strong>
+                  <strong>Proxy 🟠</strong>
                   <small style="display: block; color: var(--text-muted); margin-top: 0.25rem;">
-                    开启后将通过 Cloudflare 代理流量，提供 CDN 加速、DDoS 防护和 SSL。仅支持 A/AAAA/CNAME 记录。
+                    启用 Cloudflare CDN/DDoS 防护（仅 A/AAAA/CNAME）
                   </small>
                 </span>
               </label>
@@ -529,7 +722,7 @@
 
             <div style="margin-top: 0.75rem;">
               <label style="display: block; margin-bottom: 0.5rem;">
-                TTL (生存时间)
+                TTL
                 <span id="dns-ttl-auto-badge" class="hidden" style="margin-left: 0.5rem;">
                   <span class="badge" style="background: var(--warning); color: white; font-size: 0.7rem;">Auto</span>
                 </span>
@@ -546,10 +739,12 @@
                 <option value="86400">1 天</option>
               </select>
               <small style="color: var(--text-muted); margin-top: 0.25rem; display: block;">
-                <span id="dns-ttl-hint">TTL 决定 DNS 记录在缓存中保留的时间</span>
+                <span id="dns-ttl-hint">DNS 缓存时间</span>
               </small>
             </div>
           </div>
+
+          <button type="button" class="btn btn-primary" id="add-dns-btn" style="margin-top: 1rem; width: 100%;">添加记录</button>
         </div>
 
         <div id="dns-actions" style="margin-top: 1rem;">
@@ -560,10 +755,7 @@
 
     <footer>
       <p>
-        <a href="/whois.html">WHOIS 查询</a> |
-        Powered by <a href="https://pages.cloudflare.com" target="_blank">Cloudflare Pages</a>,
-        <a href="https://credit.linux.do" target="_blank">LINUX DO Credit</a>,
-        <a href="https://connect.linux.do" target="_blank">LINUX DO Connect</a>
+        <a href="/whois.html">WHOIS 查询</a> | <a href="/blacklist.html">小黑屋</a>
       </p>
     </footer>
   </div>
@@ -577,6 +769,7 @@
     let pendingOrder = null;
     let domainPrice = 10;
     let pendingLabel = ''; // Store the label for registration flow
+    let unreadNotifications = [];
 
     // DOM elements
     const errorContainer = document.getElementById('error-container');
@@ -584,6 +777,7 @@
     const userSection = document.getElementById('user-section');
     const registerSection = document.getElementById('register-section');
     const registerDetailSection = document.getElementById('register-detail-section');
+    const pendingReviewSection = document.getElementById('pending-review-section');
     const pendingOrderSection = document.getElementById('pending-order-section');
     const domainSection = document.getElementById('domain-section');
     const dnsSection = document.getElementById('dns-section');
@@ -631,17 +825,61 @@
         errorContainer.innerHTML = `<div class="alert alert-success">支付成功！域名已创建，正在加载...</div>`;
         errorContainer.classList.remove('hidden');
         window.history.replaceState({}, '', '/');
-        setTimeout(() => window.location.reload(), 1500);
+
+        // 轮询检查域名是否已创建（最多尝试10次，每次间隔2秒）
+        let attempts = 0;
+        const maxAttempts = 10;
+        const checkInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const data = await api('GET', '/api/domains');
+            if (data.domain) {
+              // 域名已创建，刷新页面
+              clearInterval(checkInterval);
+              window.location.reload();
+            } else if (attempts >= maxAttempts) {
+              // 超时，仍然刷新页面
+              clearInterval(checkInterval);
+              window.location.reload();
+            }
+          } catch (e) {
+            if (attempts >= maxAttempts) {
+              clearInterval(checkInterval);
+              window.location.reload();
+            }
+          }
+        }, 2000);
         return;
       } else if (paymentStatus === 'processing') {
         // 支付正在处理中，等待 notify callback
         errorContainer.innerHTML = `<div class="alert alert-info">支付正在处理中，请稍候刷新页面查看结果...</div>`;
         errorContainer.classList.remove('hidden');
         window.history.replaceState({}, '', '/');
-        // 5 秒后自动刷新检查状态
-        setTimeout(() => {
-          window.location.reload();
-        }, 5000);
+
+        // 轮询检查支付状态（最多尝试10次，每次间隔3秒）
+        let attempts = 0;
+        const maxAttempts = 10;
+        const checkInterval = setInterval(async () => {
+          attempts++;
+          try {
+            const data = await api('GET', '/api/domains');
+            if (data.domain) {
+              // 域名已创建，支付已完成
+              clearInterval(checkInterval);
+              errorContainer.innerHTML = `<div class="alert alert-success">支付成功！域名已创建</div>`;
+              setTimeout(() => window.location.reload(), 1000);
+            } else if (attempts >= maxAttempts) {
+              // 超时，提示用户手动刷新
+              clearInterval(checkInterval);
+              errorContainer.innerHTML = `<div class="alert alert-warning">支付处理中，请稍后手动刷新页面查看结果</div>`;
+            }
+          } catch (e) {
+            if (attempts >= maxAttempts) {
+              clearInterval(checkInterval);
+              errorContainer.innerHTML = `<div class="alert alert-warning">支付处理中，请稍后手动刷新页面查看结果</div>`;
+            }
+          }
+        }, 3000);
         return;
       }
 
@@ -692,6 +930,7 @@
         userSection.classList.remove('hidden');
 
         await loadDomain();
+        await loadNotifications(); // Load notifications after user is loaded
       } catch (e) {
         loginSection.classList.remove('hidden');
         userSection.classList.add('hidden');
@@ -713,18 +952,88 @@
           pendingOrder = null;
 
           document.getElementById('domain-display').textContent = currentDomain.fqdn;
-          document.getElementById('domain-status').textContent = currentDomain.status;
+
+          // Handle suspended domains
+          const statusBadge = document.getElementById('domain-status');
+          const suspendAlert = document.getElementById('suspend-alert');
+
+          if (currentDomain.status === 'suspended') {
+            statusBadge.className = 'badge badge-danger';
+            statusBadge.textContent = 'suspended';
+
+            // Show suspend alert
+            suspendAlert.innerHTML = `
+              <div class="alert alert-error" style="margin-bottom: 1rem;">
+                <strong>域名已被暂停</strong><br>
+                暂停原因: ${escapeHtml(currentDomain.suspend_reason || '违规操作')}
+              </div>
+            `;
+            suspendAlert.classList.remove('hidden');
+
+            // Show appeal section
+            document.getElementById('appeal-section').classList.remove('hidden');
+
+            // Hide DNS section for suspended domains
+            dnsSection.classList.add('hidden');
+          } else if (currentDomain.status === 'review') {
+            statusBadge.className = 'badge badge-warning';
+            statusBadge.textContent = 'pending review';
+
+            // Show review alert
+            suspendAlert.innerHTML = `
+              <div class="alert alert-info" style="margin-bottom: 1rem;">
+                <strong>域名待审核</strong><br>
+                您的域名注册申请正在等待管理员审核，审核通过后即可使用。
+                ${currentDomain.review_reason ? `<br>审核原因: ${escapeHtml(currentDomain.review_reason)}` : ''}
+              </div>
+            `;
+            suspendAlert.classList.remove('hidden');
+
+            // Hide DNS section for domains pending review
+            dnsSection.classList.add('hidden');
+          } else {
+            statusBadge.className = 'badge badge-success';
+            statusBadge.textContent = currentDomain.status;
+            suspendAlert.classList.add('hidden');
+
+            // Show DNS section for active domains
+            dnsSection.classList.remove('hidden');
+            renderDNSList();
+            document.getElementById('dns-loading').classList.add('hidden');
+            document.getElementById('dns-content').classList.remove('hidden');
+          }
+
           document.getElementById('domain-created').textContent =
             `创建于 ${new Date(currentDomain.created_at).toLocaleDateString('zh-CN')}`;
+
+          // Control delete button based on status
+          const deleteBtn = document.getElementById('delete-domain-btn');
+          if (currentDomain.status === 'suspended' || currentDomain.status === 'review') {
+            deleteBtn.disabled = true;
+            deleteBtn.title = currentDomain.status === 'suspended' ? '暂停的域名无法删除' : '审核中的域名无法删除';
+          } else {
+            deleteBtn.disabled = false;
+            deleteBtn.title = '';
+          }
 
           registerSection.classList.add('hidden');
           pendingOrderSection.classList.add('hidden');
           domainSection.classList.remove('hidden');
-          dnsSection.classList.remove('hidden');
+        } else if (data.pendingReview) {
+          // Show pending review status
+          currentDomain = null;
+          pendingOrder = null;
 
-          renderDNSList();
-          document.getElementById('dns-loading').classList.add('hidden');
-          document.getElementById('dns-content').classList.remove('hidden');
+          document.getElementById('pending-review-label').textContent = data.pendingReview.label;
+          document.getElementById('pending-review-reason').textContent = data.pendingReview.reason || '需要人工审核';
+          document.getElementById('pending-review-created').textContent =
+            new Date(data.pendingReview.created_at).toLocaleString('zh-CN');
+
+          registerSection.classList.add('hidden');
+          pendingReviewSection.classList.remove('hidden');
+          pendingOrderSection.classList.add('hidden');
+          domainSection.classList.add('hidden');
+          dnsSection.classList.add('hidden');
         } else if (data.pendingOrder) {
           // Show pending order
           pendingOrder = data.pendingOrder;
@@ -741,10 +1050,11 @@
           domainSection.classList.add('hidden');
           dnsSection.classList.add('hidden');
         } else {
-          // No domain, no pending order - show registration
+          // No domain, no pending order, no pending review - show registration
           currentDomain = null;
           pendingOrder = null;
           registerSection.classList.remove('hidden');
+          pendingReviewSection.classList.add('hidden');
           pendingOrderSection.classList.add('hidden');
           domainSection.classList.add('hidden');
           dnsSection.classList.add('hidden');
@@ -756,7 +1066,7 @@
 
     // Render DNS records list
     function renderDNSList() {
-      const list = document.getElementById('dns-list');
+      const container = document.getElementById('dns-records-container');
       const modeBadge = document.getElementById('dns-mode-badge');
 
       // Show mode badge
@@ -769,22 +1079,41 @@
       }
 
       if (currentDNSRecords.length === 0) {
-        list.innerHTML = '<li style="color: var(--text-muted);">暂无 DNS 记录</li>';
+        container.innerHTML = '<p style="color: var(--text-muted); padding: 1rem;">暂无 DNS 记录</p>';
       } else {
-        list.innerHTML = currentDNSRecords.map(record => {
-          // For proxied records, show "Auto" instead of actual TTL
-          const ttlText = record.proxied ? 'Auto' : formatTTL(record.ttl);
-          const proxyBadge = record.proxied ? '<span class="badge badge-warning" style="font-size: 0.7rem; margin-left: 0.5rem;">🟠 Proxied</span>' : '';
-          return `
-          <li>
-            <span class="badge" style="background: #dbeafe; color: #1e40af; font-size: 0.75rem; margin-right: 0.5rem;">${escapeHtml(record.type)}</span>
-            <span>${escapeHtml(record.content)}</span>
-            ${proxyBadge}
-            <small style="color: var(--text-muted); margin-left: 0.5rem;">TTL: ${ttlText}</small>
-            <button class="ns-remove" onclick="deleteDNSRecord(${record.id})" title="删除">✕</button>
-          </li>
+        container.innerHTML = `
+          <table class="dns-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Name</th>
+                <th>Content</th>
+                <th style="text-align: center;">Proxy</th>
+                <th>TTL</th>
+                <th style="width: 60px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${currentDNSRecords.map(record => {
+                const ttlText = record.proxied ? 'Auto' : formatTTL(record.ttl);
+                const proxyIcon = record.proxied ? '🟠' : '⚪';
+                const proxyTitle = record.proxied ? 'Proxied' : 'DNS only';
+                const displayName = record.name === '@' ? '@' : escapeHtml(record.name);
+
+                return `
+                  <tr>
+                    <td><span class="type-badge">${escapeHtml(record.type)}</span></td>
+                    <td><span class="record-name">${displayName}</span></td>
+                    <td><span class="record-content">${escapeHtml(record.content)}</span></td>
+                    <td style="text-align: center;"><span class="proxy-icon" title="${proxyTitle}">${proxyIcon}</span></td>
+                    <td>${ttlText}</td>
+                    <td><button class="action-btn" onclick="deleteDNSRecord(${record.id})" title="删除">✕</button></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
         `;
-        }).join('');
       }
     }
 
@@ -799,19 +1128,19 @@
     // Update DNS type hint based on selected type
     function updateDNSTypeHint() {
       const type = document.getElementById('dns-type-select').value;
-      const input = document.getElementById('dns-content-input');
+      const contentInput = document.getElementById('dns-content-input');
       const hint = document.getElementById('dns-type-hint');
       const proxyOption = document.getElementById('dns-proxy-option');
       const proxyCheckbox = document.getElementById('dns-proxy-checkbox');
 
       const hints = {
-        'A': { placeholder: '1.2.3.4', text: '输入 IPv4 地址，例如：1.2.3.4' },
-        'AAAA': { placeholder: '2001:db8::1', text: '输入 IPv6 地址，例如：2001:db8::1' },
-        'CNAME': { placeholder: 'example.com', text: '输入目标域名，例如：example.com' },
-        'NS': { placeholder: 'ns1.example.com', text: '输入 NS 服务器地址，例如：ns1.example.com。推荐免费 DNS：Cloudflare、Hurricane Electric、deSEC' },
+        'A': { placeholder: '1.2.3.4', text: '@ 表示根域名，或输入子域名（如 blog、api）来创建 blog.your-domain.py.kg' },
+        'AAAA': { placeholder: '2001:db8::1', text: '@ 表示根域名，或输入子域名来创建子域名记录' },
+        'CNAME': { placeholder: 'example.com', text: '@ 表示根域名，或输入子域名。目标域名示例：example.com' },
+        'NS': { placeholder: 'ns1.example.com', text: '@ 表示根域名，或输入子域名。推荐：Cloudflare、Hurricane Electric、deSEC' },
       };
 
-      input.placeholder = hints[type].placeholder;
+      contentInput.placeholder = hints[type].placeholder;
       hint.textContent = hints[type].text;
 
       // Show/hide proxy option (only for A, AAAA, CNAME)
@@ -851,17 +1180,25 @@
     // Add DNS record
     async function addDNSRecord() {
       const typeSelect = document.getElementById('dns-type-select');
-      const input = document.getElementById('dns-content-input');
+      const nameInput = document.getElementById('dns-name-input');
+      const contentInput = document.getElementById('dns-content-input');
       const ttlSelect = document.getElementById('dns-ttl-select');
       const proxyCheckbox = document.getElementById('dns-proxy-checkbox');
 
       const type = typeSelect.value;
-      const content = input.value.trim();
+      const name = nameInput.value.trim() || '@';
+      const content = contentInput.value.trim();
       const ttl = parseInt(ttlSelect.value, 10);
       const proxied = proxyCheckbox.checked;
 
       if (!content) {
         showError('请输入记录内容');
+        return;
+      }
+
+      // Validate name format (@ or subdomain label)
+      if (name !== '@' && !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(name)) {
+        showError('Name 格式错误：必须是 @ 或有效的子域名（只允许小写字母、数字和连字符，不能以连字符开头或结尾）');
         return;
       }
 
@@ -878,7 +1215,7 @@
       try {
         await api('POST', '/api/dns-records', {
           type: type,
-          name: '@',
+          name: name,
           content: content,
           ttl: ttl,
           proxied: proxied
@@ -886,14 +1223,16 @@
 
         // Reload domain to get updated records
         await loadDomain();
-        input.value = '';
+        nameInput.value = '';
+        contentInput.value = '';
         const proxyText = proxied ? '（已启用 CDN）' : '';
-        showSuccess(`${type} 记录添加成功${proxyText}！DNS 生效可能需要几分钟。`);
+        const nameText = name === '@' ? '根域名' : name;
+        showSuccess(`${type} 记录添加成功 (${nameText})${proxyText}！DNS 生效可能需要几分钟。`);
       } catch (e) {
         showError('添加失败: ' + e.message);
       } finally {
         btn.disabled = false;
-        btn.textContent = '添加';
+        btn.textContent = '添加记录';
       }
     }
 
@@ -1073,17 +1412,116 @@
     document.getElementById('dns-type-select').addEventListener('change', updateDNSTypeHint);
     document.getElementById('dns-proxy-checkbox').addEventListener('change', updateTTLState);
     document.getElementById('add-dns-btn').addEventListener('click', addDNSRecord);
+
+    // Add Enter key support for both name and content inputs
+    document.getElementById('dns-name-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addDNSRecord();
+      }
+    });
     document.getElementById('dns-content-input').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         addDNSRecord();
       }
     });
+
     document.getElementById('clear-dns-btn').addEventListener('click', clearAllDNS);
 
     // Initialize DNS type hint and TTL state
     updateDNSTypeHint();
     updateTTLState();
+
+    // Notifications functionality
+    async function loadNotifications() {
+      try {
+        const data = await api('GET', '/api/notifications');
+        const notifications = data.notifications || [];
+
+        // Update unread count
+        unreadNotifications = notifications.filter(n => n.is_read === 0);
+        const unreadBadge = document.getElementById('unread-badge');
+        if (unreadNotifications.length > 0) {
+          unreadBadge.textContent = unreadNotifications.length;
+          unreadBadge.classList.remove('hidden');
+        } else {
+          unreadBadge.classList.add('hidden');
+        }
+
+        // Render notifications list
+        const notificationsList = document.getElementById('notifications-list');
+        if (notifications.length === 0) {
+          notificationsList.innerHTML = '<div class="empty-state">暂无消息</div>';
+        } else {
+          notificationsList.innerHTML = notifications.map(n => `
+            <div class="card" style="margin-bottom: 0.75rem; padding: 1rem; ${n.is_read === 0 ? 'border-left: 3px solid var(--primary);' : ''}">
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                <strong style="color: ${n.is_read === 0 ? 'var(--primary)' : 'var(--text)'};">${escapeHtml(n.title)}</strong>
+                <span style="font-size: 0.75rem; color: var(--text-muted);">${new Date(n.created_at).toLocaleString('zh-CN')}</span>
+              </div>
+              <p style="margin: 0; font-size: 0.875rem; color: var(--text-muted);">${escapeHtml(n.message)}</p>
+              ${n.is_read === 0 ? `<button class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;" onclick="markAsRead(${n.id})">标记已读</button>` : ''}
+            </div>
+          `).join('');
+        }
+      } catch (e) {
+        console.error('Failed to load notifications:', e);
+      }
+    }
+
+    async function markAsRead(id) {
+      try {
+        await api('POST', '/api/notifications', { id });
+        await loadNotifications();
+      } catch (e) {
+        showError('标记失败: ' + e.message);
+      }
+    }
+
+    async function markAllAsRead() {
+      try {
+        await api('POST', '/api/notifications', { mark_all: true });
+        await loadNotifications();
+      } catch (e) {
+        showError('标记失败: ' + e.message);
+      }
+    }
+
+    window.markAsRead = markAsRead;
+
+    document.getElementById('notifications-btn').addEventListener('click', () => {
+      document.getElementById('notifications-panel').classList.toggle('hidden');
+      if (!document.getElementById('notifications-panel').classList.contains('hidden')) {
+        loadNotifications();
+      }
+    });
+
+    document.getElementById('close-notifications-btn').addEventListener('click', () => {
+      document.getElementById('notifications-panel').classList.add('hidden');
+    });
+
+    document.getElementById('mark-all-read-btn').addEventListener('click', markAllAsRead);
+
+    // Appeal functionality
+    document.getElementById('appeal-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const reason = document.getElementById('appeal-reason').value.trim();
+
+      if (reason.length < 10) {
+        showError('申诉原因至少需要10个字符');
+        return;
+      }
+
+      try {
+        const data = await api('POST', '/api/appeals', { reason });
+        showError(data.message || '申诉已提交', 'success');
+        document.getElementById('appeal-form').reset();
+        document.getElementById('appeal-section').classList.add('hidden');
+      } catch (e) {
+        showError('提交失败: ' + e.message);
+      }
+    });
 
     // Continue payment for pending order
     document.getElementById('continue-pay-btn').addEventListener('click', async () => {
@@ -1112,6 +1550,11 @@
 
     // Refresh status button - simply reload the page
     document.getElementById('refresh-status-btn').addEventListener('click', () => {
+      window.location.reload();
+    });
+
+    // Refresh review status button - simply reload the page
+    document.getElementById('refresh-review-status-btn').addEventListener('click', () => {
       window.location.reload();
     });
 

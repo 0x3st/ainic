@@ -202,6 +202,11 @@
       color: var(--success);
     }
 
+    .badge-danger {
+      background: #fee2e2;
+      color: var(--danger);
+    }
+
     .badge-warning {
       background: #fef3c7;
       color: var(--warning);
@@ -245,6 +250,56 @@
       margin-bottom: 0.5rem;
       font-family: monospace;
       font-size: 0.875rem;
+    }
+
+    .dns-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0.5rem 0;
+      font-size: 0.875rem;
+    }
+
+    .dns-table thead {
+      background: var(--bg);
+    }
+
+    .dns-table th {
+      padding: 0.75rem 0.5rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-bottom: 2px solid var(--border);
+    }
+
+    .dns-table td {
+      padding: 0.75rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .dns-table .type-badge {
+      display: inline-block;
+      padding: 0.25rem 0.5rem;
+      background: #dbeafe;
+      color: #1e40af;
+      border-radius: 4px;
+      font-weight: 500;
+      font-size: 0.75rem;
+    }
+
+    .dns-table .proxy-icon {
+      font-size: 1.1rem;
+    }
+
+    .dns-table .record-name {
+      font-family: monospace;
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .dns-table .record-content {
+      font-family: monospace;
+      word-break: break-all;
     }
 
     .loading {
@@ -347,7 +402,7 @@
 
     <footer>
       <p>
-        <a href="/">返回首页</a>
+        <a href="/">返回首页</a> | <a href="/blacklist.html">小黑屋</a>
       </p>
     </footer>
   </div>
@@ -454,22 +509,76 @@
         minute: '2-digit'
       });
 
-      let nsHtml = '';
-      if (data.nameservers && data.nameservers.length > 0) {
-        nsHtml = `
+      // Format TTL for display
+      function formatTTL(seconds) {
+        if (seconds < 60) return `${seconds}秒`;
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}小时`;
+        return `${Math.floor(seconds / 86400)}天`;
+      }
+
+      let dnsRecordsHtml = '';
+      if (data.dns_records && data.dns_records.length > 0) {
+        dnsRecordsHtml = `
           <div class="info-row">
-            <strong>NS 记录:</strong>
-            <ul class="ns-list">
-              ${data.nameservers.map(ns => `<li>${escapeHtml(ns)}</li>`).join('')}
-            </ul>
+            <strong>DNS 记录:</strong>
+            <table class="dns-table">
+              <thead>
+                <tr>
+                  <th>Type</th>
+                  <th>Name</th>
+                  <th>Content</th>
+                  <th style="text-align: center;">Proxy</th>
+                  <th>TTL</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.dns_records.map(record => {
+                  const ttlText = record.proxied ? 'Auto' : formatTTL(record.ttl);
+                  const proxyIcon = record.proxied ? '🟠' : '⚪';
+                  const proxyTitle = record.proxied ? 'Proxied' : 'DNS only';
+                  const displayName = record.name === '@' ? '@' : escapeHtml(record.name);
+
+                  return `
+                    <tr>
+                      <td><span class="type-badge">${escapeHtml(record.type)}</span></td>
+                      <td><span class="record-name">${displayName}</span></td>
+                      <td><span class="record-content">${escapeHtml(record.content)}</span></td>
+                      <td style="text-align: center;"><span class="proxy-icon" title="${proxyTitle}">${proxyIcon}</span></td>
+                      <td>${ttlText}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
           </div>
         `;
       }
+
+      // Check if domain is suspended or under review
+      const isSuspended = data.status === 'suspended';
+      const isReview = data.status === 'review';
+      const statusBadgeClass = isSuspended ? 'badge-danger' : (isReview ? 'badge-warning' : 'badge-success');
 
       resultSection.innerHTML = `
         <div class="card">
           <h2>查询结果</h2>
           <div class="domain-display">${escapeHtml(data.fqdn)}</div>
+
+          ${isSuspended && data.suspend_reason ? `
+          <div class="alert alert-error" style="margin-bottom: 1rem;">
+            <strong>域名已被暂停</strong><br>
+            暂停原因: ${escapeHtml(data.suspend_reason)}
+          </div>
+          ` : ''}
+
+          ${isReview ? `
+          <div class="alert alert-info" style="margin-bottom: 1rem;">
+            <strong>域名待审核</strong><br>
+            该域名正在等待管理员审核，审核通过后即可使用。
+            ${data.review_reason ? `<br>审核原因: ${escapeHtml(data.review_reason)}` : ''}
+          </div>
+          ` : ''}
 
           <div class="info-row">
             <strong>域名标签:</strong>
@@ -478,7 +587,7 @@
 
           <div class="info-row">
             <strong>状态:</strong>
-            <span class="badge badge-success">${escapeHtml(data.status)}</span>
+            <span class="badge ${statusBadgeClass}">${escapeHtml(data.status)}</span>
           </div>
 
           <div class="info-row">
@@ -488,28 +597,23 @@
 
           <div class="info-row">
             <strong>所有者:</strong>
-            ${escapeHtml(data.owner.username)} (LinuxDO ID: ${data.owner.linuxdo_id})
+            ${escapeHtml(data.owner.username)}
           </div>
 
           ${data.python_praise ? `
           <div class="info-row">
             <strong>Python 赞美:</strong>
-            <div style="margin-top: 0.5rem; padding: 0.75rem; background: var(--bg); border-radius: 4px; white-space: pre-wrap; line-height: 1.5;">
-              ${escapeHtml(data.python_praise)}
-            </div>
+            ${escapeHtml(data.python_praise)}
           </div>
           ` : ''}
 
           ${data.usage_purpose ? `
           <div class="info-row">
             <strong>使用用途:</strong>
-            <div style="margin-top: 0.5rem; padding: 0.75rem; background: var(--bg); border-radius: 4px; white-space: pre-wrap; line-height: 1.5;">
-              ${escapeHtml(data.usage_purpose)}
-            </div>
+            ${escapeHtml(data.usage_purpose)}
+            ${!isSuspended && !isReview ? `<button class="btn btn-danger btn-sm" style="margin-left: 1rem;" onclick="reportDomain('${escapeHtml(data.label)}')">举报滥用</button>` : ''}
           </div>
           ` : ''}
-
-          ${nsHtml}
         </div>
       `;
 
@@ -534,6 +638,32 @@
 
       queryWhois(domain);
     });
+
+    // Report domain abuse
+    async function reportDomain(label) {
+      const reason = prompt('请说明举报原因（滥用、非法内容等）：');
+      if (!reason || !reason.trim()) {
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ label, reason: reason.trim() })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          alert('举报已提交，管理员将尽快处理。感谢您的监督！');
+        } else {
+          alert('举报失败: ' + (data.error || '未知错误'));
+        }
+      } catch (e) {
+        alert('举报失败: ' + e.message);
+      }
+    }
+    window.reportDomain = reportDomain;
 
     // Initialize
     checkAuth();

@@ -1,9 +1,8 @@
 // /api/whois - WHOIS query for domain information
 
-import type { Env, Domain } from '../lib/types';
+import type { Env, Domain, DnsRecord } from '../lib/types';
 import { requireAuth, successResponse, errorResponse } from '../lib/auth';
 import { validateLabel } from '../lib/validators';
-import { CloudflareDNSClient } from '../lib/cloudflare-dns';
 
 interface WhoisDomainInfo {
   label: string;
@@ -16,10 +15,19 @@ interface WhoisDomainInfo {
   created_at: string;
   python_praise: string | null;
   usage_purpose: string | null;
-  nameservers: string[];
+  suspend_reason: string | null;
+  review_reason: string | null;
+  dns_records: Array<{
+    type: string;
+    name: string;
+    content: string;
+    ttl: number;
+    proxied: boolean;
+  }>;
 }
 
 interface DomainQueryResult {
+  id: number;
   label: string;
   fqdn: string;
   owner_linuxdo_id: number;
@@ -27,6 +35,8 @@ interface DomainQueryResult {
   created_at: string;
   python_praise: string | null;
   usage_purpose: string | null;
+  suspend_reason: string | null;
+  review_reason: string | null;
   username: string | null;
 }
 
@@ -58,45 +68,44 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   try {
     // Query database - JOIN with users table to get username
-    // Only query active domains
+    // Query active, suspended, and review status domains
     const result = await env.DB.prepare(`
-      SELECT d.label, d.fqdn, d.owner_linuxdo_id, d.status, d.created_at, d.python_praise, d.usage_purpose, u.username
+      SELECT d.id, d.label, d.fqdn, d.owner_linuxdo_id, d.status, d.created_at, d.python_praise, d.usage_purpose, d.suspend_reason, d.review_reason, u.username
       FROM domains d
       LEFT JOIN users u ON d.owner_linuxdo_id = u.linuxdo_id
-      WHERE d.label = ? AND d.status = 'active'
+      WHERE d.label = ? AND d.status IN ('active', 'suspended', 'review')
     `).bind(domain).first<DomainQueryResult>();
 
     if (!result) {
       return errorResponse('Domain not found', 404);
     }
 
-    // Get NS records from Cloudflare DNS
-    const cfClient = new CloudflareDNSClient(env.CLOUDFLARE_API_TOKEN, env.CLOUDFLARE_ZONE_ID);
-    let nameservers: string[] = [];
-
-    try {
-      const nsResult = await cfClient.getNSRecords(result.fqdn);
-      if (nsResult.success && nsResult.records) {
-        nameservers = nsResult.records.map(r => r.content);
-      }
-    } catch (error) {
-      // If NS query fails, just return empty array
-      console.error('Failed to fetch NS records:', error);
-    }
+    // Get DNS records from database
+    const { results: dnsRecords } = await env.DB.prepare(
+      'SELECT type, name, content, ttl, proxied FROM dns_records WHERE domain_id = ? ORDER BY type, name'
+    ).bind(result.id).all<DnsRecord>();
 
     // Build response - with privacy protection
     const response: WhoisDomainInfo = {
       label: result.label,
       fqdn: result.fqdn,
       owner: {
-        linuxdo_id: result.owner_linuxdo_id,
+        linuxdo_id: 0,  // Hide LinuxDO ID for privacy
         username: 'Privacy Protect'
       },
       status: result.status,
       created_at: result.created_at,
       python_praise: result.python_praise,
       usage_purpose: result.usage_purpose,
-      nameservers
+      suspend_reason: result.suspend_reason,
+      review_reason: result.review_reason,
+      dns_records: (dnsRecords || []).map(r => ({
+        type: r.type,
+        name: r.name,
+        content: r.content,
+        ttl: r.ttl,
+        proxied: r.proxied === 1
+      }))
     };
 
     return successResponse(response);

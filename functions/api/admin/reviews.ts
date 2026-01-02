@@ -3,6 +3,7 @@
 import type { Env, PendingReview, AdminReviewListItem } from '../../lib/types';
 import { requireAdmin, successResponse, errorResponse } from '../../lib/auth';
 import { CloudflareDNSClient } from '../../lib/cloudflare-dns';
+import { createNotification } from '../../lib/notifications';
 
 // GET /api/admin/reviews - Get pending reviews
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -21,6 +22,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
     const { results } = await env.DB.prepare(`
       SELECT pr.id, pr.order_no, pr.linuxdo_id, u.username, pr.label, pr.reason, pr.status, pr.created_at,
+             pr.python_praise, pr.usage_purpose,
              o.status as order_status, o.amount, o.paid_at
       FROM pending_reviews pr
       LEFT JOIN users u ON pr.linuxdo_id = u.linuxdo_id
@@ -108,14 +110,40 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         return errorResponse('订单尚未支付，无法批准。请等待用户完成支付。', 400);
       }
 
-      // Create domain record
+      // Check if domain already exists (should exist with 'review' status)
       const baseDomain = env.BASE_DOMAIN || 'py.kg';
       const fqdn = `${review.label}.${baseDomain}`;
 
-      await env.DB.prepare(`
-        INSERT INTO domains (label, fqdn, owner_linuxdo_id, python_praise, usage_purpose, status, created_at)
-        VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
-      `).bind(review.label, fqdn, review.linuxdo_id, review.python_praise, review.usage_purpose).run();
+      const existingDomain = await env.DB.prepare(
+        'SELECT * FROM domains WHERE label = ? AND owner_linuxdo_id = ?'
+      ).bind(review.label, review.linuxdo_id).first();
+
+      if (existingDomain) {
+        // Domain exists, update status from 'review' to 'active'
+        await env.DB.prepare(`
+          UPDATE domains SET status = 'active', review_reason = NULL
+          WHERE label = ? AND owner_linuxdo_id = ?
+        `).bind(review.label, review.linuxdo_id).run();
+
+        console.log('[Admin Review] Domain approved, status updated to active:', fqdn);
+
+        // Send notification to user
+        await createNotification(
+          env.DB,
+          review.linuxdo_id,
+          'domain_approved',
+          '域名审核通过',
+          `您的域名 ${fqdn} 已通过审核，现在可以正常使用了。`
+        );
+      } else {
+        // Domain doesn't exist (old flow), create it
+        await env.DB.prepare(`
+          INSERT INTO domains (label, fqdn, owner_linuxdo_id, python_praise, usage_purpose, status, created_at)
+          VALUES (?, ?, ?, ?, ?, 'active', datetime('now'))
+        `).bind(review.label, fqdn, review.linuxdo_id, review.python_praise, review.usage_purpose).run();
+
+        console.log('[Admin Review] Domain created as active:', fqdn);
+      }
 
       // Log the action
       await env.DB.prepare(`
@@ -130,6 +158,28 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       ).run();
     } else {
       // Rejected
+      // Delete domain if it exists with 'review' status
+      const existingDomain = await env.DB.prepare(
+        'SELECT * FROM domains WHERE label = ? AND owner_linuxdo_id = ? AND status = ?'
+      ).bind(review.label, review.linuxdo_id, 'review').first();
+
+      if (existingDomain) {
+        await env.DB.prepare(
+          'DELETE FROM domains WHERE id = ?'
+        ).bind(existingDomain.id).run();
+
+        console.log('[Admin Review] Domain deleted due to rejection:', review.label);
+      }
+
+      // Send notification to user
+      await createNotification(
+        env.DB,
+        review.linuxdo_id,
+        'domain_rejected',
+        '域名审核未通过',
+        `您的域名 ${review.label}.${env.BASE_DOMAIN || 'py.kg'} 未通过审核。审核原因：${review.reason}`
+      );
+
       // Log the action
       await env.DB.prepare(`
         INSERT INTO audit_logs (linuxdo_id, action, target, details, ip_address, created_at)

@@ -414,6 +414,9 @@
                 <a class="nav-link" onclick="showPage('reviews', event)">审核管理</a>
               </li>
               <li class="nav-item">
+                <a class="nav-link" onclick="showPage('reports', event)">举报管理</a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link" onclick="showPage('banned-words', event)">敏感词管理</a>
               </li>
               <li class="nav-item">
@@ -435,6 +438,9 @@
               <div class="loading">加载中...</div>
             </div>
             <div id="reviews" class="page">
+              <div class="loading">加载中...</div>
+            </div>
+            <div id="reports" class="page">
               <div class="loading">加载中...</div>
             </div>
             <div id="banned-words" class="page">
@@ -484,6 +490,9 @@
           case 'reviews':
             loadReviews();
             break;
+          case 'reports':
+            loadReports();
+            break;
           case 'banned-words':
             loadBannedWords();
             break;
@@ -498,6 +507,7 @@
         'users': '用户管理',
         'domains': '域名管理',
         'reviews': '审核管理',
+        'reports': '举报管理',
         'banned-words': '敏感词管理'
       };
       return titles[pageName] || '';
@@ -933,25 +943,34 @@
 
         if (data.success) {
           const reviews = data.data.reviews;
+          const hasPendingReviews = reviews.some(r => r.status === 'pending' && r.order_status === 'paid');
+
           page.innerHTML = `
             <h1 style="margin-bottom: 1.5rem;">审核管理</h1>
             <div id="reviews-alert"></div>
             <div class="card">
-              <div class="search-bar">
-                <select id="review-status" value="${status}">
-                  <option value="pending">待审核</option>
-                  <option value="approved">已批准</option>
-                  <option value="rejected">已拒绝</option>
-                </select>
-                <button class="btn btn-primary" onclick="filterReviews()">筛选</button>
+              <div class="search-bar" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                  <select id="review-status" value="${status}">
+                    <option value="pending">待审核</option>
+                    <option value="approved">已批准</option>
+                    <option value="rejected">已拒绝</option>
+                  </select>
+                  <button class="btn btn-primary" onclick="filterReviews()">筛选</button>
+                </div>
+                ${status === 'pending' && hasPendingReviews ? `
+                  <button class="btn btn-success" onclick="batchApproveReviews()">批量通过选中项</button>
+                ` : ''}
               </div>
               <div class="table-container">
                 <table>
                   <thead>
                     <tr>
+                      ${status === 'pending' ? '<th><input type="checkbox" id="select-all-reviews" onchange="toggleAllReviews(this)"></th>' : ''}
                       <th>域名</th>
                       <th>用户</th>
-                      <th>原因</th>
+                      <th>Python赞美</th>
+                      <th>用途说明</th>
                       <th>支付状态</th>
                       <th>提交时间</th>
                       <th>状态</th>
@@ -959,14 +978,16 @@
                     </tr>
                   </thead>
                   <tbody>
-                    ${reviews.length === 0 ? '<tr><td colspan="7" class="empty-state">无数据</td></tr>' : reviews.map(review => {
+                    ${reviews.length === 0 ? `<tr><td colspan="${status === 'pending' ? '9' : '8'}" class="empty-state">无数据</td></tr>` : reviews.map(review => {
                       const isPaid = review.order_status === 'paid';
                       const canApprove = review.status === 'pending' && isPaid;
                       return `
                       <tr>
+                        ${status === 'pending' && canApprove ? `<td><input type="checkbox" class="review-checkbox" value="${review.id}"></td>` : (status === 'pending' ? '<td></td>' : '')}
                         <td>${review.label}.PY.KG</td>
                         <td>${review.username} (${review.linuxdo_id})</td>
-                        <td>${review.reason || '-'}</td>
+                        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${review.python_praise || '-'}">${review.python_praise || '-'}</td>
+                        <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${review.usage_purpose || '-'}">${review.usage_purpose || '-'}</td>
                         <td>
                           ${review.order_status === 'paid' ? '<span class="badge badge-success">已支付</span>' : ''}
                           ${review.order_status === 'pending' ? '<span class="badge badge-warning">待支付</span>' : ''}
@@ -982,9 +1003,9 @@
                         <td>
                           ${review.status === 'pending' ? `
                             <div class="action-buttons">
-                              <button class="btn btn-success" onclick="approveReview(${review.id})" ${!canApprove ? 'disabled title="订单未支付"' : ''}>批准</button>
-                              <button class="btn btn-danger" onclick="rejectReview(${review.id}, false)">拒绝</button>
-                              <button class="btn btn-danger" onclick="rejectReview(${review.id}, true)">拒绝并封禁</button>
+                              <button class="btn btn-success btn-sm" onclick="approveReview(${review.id})" ${!canApprove ? 'disabled title="订单未支付"' : ''}>批准</button>
+                              <button class="btn btn-danger btn-sm" onclick="rejectReview(${review.id}, false)">拒绝</button>
+                              <button class="btn btn-danger btn-sm" onclick="rejectReview(${review.id}, true)">拒绝并封禁</button>
                             </div>
                           ` : '-'}
                         </td>
@@ -998,6 +1019,48 @@
         }
       } catch (error) {
         page.innerHTML = '<div class="alert alert-error">加载失败</div>';
+      }
+    }
+
+    function toggleAllReviews(checkbox) {
+      const checkboxes = document.querySelectorAll('.review-checkbox');
+      checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    }
+
+    async function batchApproveReviews() {
+      const checkboxes = document.querySelectorAll('.review-checkbox:checked');
+      const ids = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+      if (ids.length === 0) {
+        showAlert('reviews-alert', '请选择要批准的审核项', 'error');
+        return;
+      }
+
+      if (!confirm(`确定要批准选中的 ${ids.length} 个域名吗？`)) return;
+
+      try {
+        let successCount = 0;
+        let failCount = 0;
+
+        for (const id of ids) {
+          const res = await fetch('/api/admin/reviews', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, action: 'approve' })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            successCount++;
+          } else {
+            failCount++;
+          }
+        }
+
+        showAlert('reviews-alert', `批量审核完成：成功 ${successCount} 个，失败 ${failCount} 个`, successCount > 0 ? 'success' : 'error');
+        loadReviews();
+      } catch (error) {
+        showAlert('reviews-alert', '批量审核失败', 'error');
       }
     }
 
@@ -1045,6 +1108,124 @@
         }
       } catch (error) {
         showAlert('reviews-alert', '操作失败', 'error');
+      }
+    }
+
+    // 举报管理页面
+    async function loadReports(status = 'pending') {
+      const page = document.getElementById('reports');
+      page.innerHTML = '<div class="loading">加载中...</div>';
+
+      try {
+        const params = new URLSearchParams({ status, limit: 100 });
+        const res = await fetch(`/api/admin/reports?${params}`);
+        const data = await res.json();
+
+        if (data.success) {
+          const reports = data.data.reports;
+          page.innerHTML = `
+            <h1 style="margin-bottom: 1.5rem;">举报管理</h1>
+            <div id="reports-alert"></div>
+            <div class="card">
+              <div class="search-bar">
+                <select id="report-status" value="${status}">
+                  <option value="pending">待处理</option>
+                  <option value="resolved">已处理</option>
+                  <option value="rejected">已拒绝</option>
+                </select>
+                <button class="btn btn-primary" onclick="filterReports()">筛选</button>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>被举报域名</th>
+                      <th>举报人</th>
+                      <th>举报原因</th>
+                      <th>举报时间</th>
+                      <th>状态</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${reports.length === 0 ? '<tr><td colspan="6" class="empty-state">无数据</td></tr>' : reports.map(report => `
+                      <tr>
+                        <td>${report.label}.PY.KG</td>
+                        <td>用户 ${report.reporter_linuxdo_id}</td>
+                        <td style="max-width: 300px;">${report.reason}</td>
+                        <td>${new Date(report.created_at).toLocaleString('zh-CN')}</td>
+                        <td>
+                          ${report.status === 'pending' ? '<span class="badge badge-warning">待处理</span>' : ''}
+                          ${report.status === 'resolved' ? '<span class="badge badge-success">已处理</span>' : ''}
+                          ${report.status === 'rejected' ? '<span class="badge badge-danger">已拒绝</span>' : ''}
+                        </td>
+                        <td>
+                          ${report.status === 'pending' ? `
+                            <div class="action-buttons">
+                              <button class="btn btn-success btn-sm" onclick="resolveReport(${report.id})">处理（删除域名）</button>
+                              <button class="btn btn-secondary btn-sm" onclick="rejectReport(${report.id})">拒绝举报</button>
+                            </div>
+                          ` : '-'}
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }
+      } catch (error) {
+        page.innerHTML = '<div class="alert alert-error">加载失败</div>';
+      }
+    }
+
+    function filterReports() {
+      const status = document.getElementById('report-status').value;
+      loadReports(status);
+    }
+
+    async function resolveReport(id) {
+      if (!confirm('确定要处理此举报吗？这将删除被举报的域名。')) return;
+
+      try {
+        const res = await fetch('/api/admin/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'resolve' })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('reports-alert', '举报已处理，域名已删除', 'success');
+          loadReports();
+        } else {
+          showAlert('reports-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('reports-alert', '操作失败', 'error');
+      }
+    }
+
+    async function rejectReport(id) {
+      if (!confirm('确定要拒绝此举报吗？')) return;
+
+      try {
+        const res = await fetch('/api/admin/reports', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'reject' })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          showAlert('reports-alert', '已拒绝举报', 'success');
+          loadReports();
+        } else {
+          showAlert('reports-alert', data.error || '操作失败', 'error');
+        }
+      } catch (error) {
+        showAlert('reports-alert', '操作失败', 'error');
       }
     }
 
