@@ -665,14 +665,12 @@
     <div id="dns-section" class="card hidden">
       <h2>DNS 记录管理</h2>
       <div class="alert alert-info" style="margin-bottom: 1rem;">
-        <strong>说明：</strong>您可以选择以下两种方式之一管理您的域名：
+        <strong>说明：</strong>您可以添加以下类型的 DNS 记录（最多10条）：
         <ul style="margin: 0.5rem 0 0 1.5rem;">
-          <li><strong>直接解析模式：</strong>添加 A/AAAA/CNAME 记录（最多4条）</li>
-          <li><strong>NS 委派模式：</strong>添加 NS 记录委派给外部 DNS 服务器（最多4条）</li>
+          <li><strong>A / AAAA：</strong>指向 IPv4 / IPv6 地址</li>
+          <li><strong>CNAME：</strong>指向另一个域名</li>
+          <li><strong>TXT：</strong>仅限 Let's Encrypt 证书验证（_acme-challenge）</li>
         </ul>
-        <small style="color: var(--text-muted); display: block; margin-top: 0.5rem;">
-          注意：两种模式不能混用。如需切换模式，请先删除所有现有记录。
-        </small>
       </div>
 
       <div id="dns-loading" class="loading">
@@ -697,7 +695,7 @@
                 <option value="A">A</option>
                 <option value="AAAA">AAAA</option>
                 <option value="CNAME">CNAME</option>
-                <option value="NS">NS</option>
+                <option value="TXT">TXT</option>
               </select>
             </div>
             <div>
@@ -1143,14 +1141,14 @@
         'A': { placeholder: '1.2.3.4', text: '@ 表示根域名，或输入子域名（如 blog、api）来创建 blog.your-domain.py.kg' },
         'AAAA': { placeholder: '2001:db8::1', text: '@ 表示根域名，或输入子域名来创建子域名记录' },
         'CNAME': { placeholder: 'example.com', text: '@ 表示根域名，或输入子域名。目标域名示例：example.com' },
-        'NS': { placeholder: 'ns1.example.com', text: '@ 表示根域名，或输入子域名。推荐：Cloudflare、Hurricane Electric、deSEC' },
+        'TXT': { placeholder: 'your-acme-challenge-token', text: '仅限 Let\'s Encrypt 验证。Name 必须是 _acme-challenge 或 _acme-challenge.subdomain' },
       };
 
       contentInput.placeholder = hints[type].placeholder;
       hint.textContent = hints[type].text;
 
       // Show/hide proxy option (only for A, AAAA, CNAME)
-      if (type === 'NS') {
+      if (type === 'TXT') {
         proxyOption.style.display = 'none';
         proxyCheckbox.checked = false;
         updateTTLState(); // Update TTL state when proxy changes
@@ -1203,13 +1201,28 @@
       }
 
       // Validate name format (@ or subdomain label)
-      if (name !== '@' && !/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(name)) {
-        showError('Name 格式错误：必须是 @ 或有效的子域名（只允许小写字母、数字和连字符，不能以连字符开头或结尾）');
-        return;
+      if (name !== '@') {
+        if (type === 'TXT') {
+          // TXT records can have underscores (like _acme-challenge)
+          if (!/^[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?(\.[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?)*$/.test(name)) {
+            showError('Name 格式错误：TXT 记录必须是 _acme-challenge 或 _acme-challenge.subdomain');
+            return;
+          }
+          // Validate TXT prefix
+          if (!name.startsWith('_acme-challenge')) {
+            showError('TXT 记录仅限 Let\'s Encrypt 验证，Name 必须以 _acme-challenge 开头');
+            return;
+          }
+        } else {
+          if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(name)) {
+            showError('Name 格式错误：必须是 @ 或有效的子域名（只允许小写字母、数字和连字符，不能以连字符开头或结尾）');
+            return;
+          }
+        }
       }
 
-      if (currentDNSRecords.length >= 4) {
-        showError('最多只能添加 4 条 DNS 记录');
+      if (currentDNSRecords.length >= 10) {
+        showError('最多只能添加 10 条 DNS 记录');
         return;
       }
 
