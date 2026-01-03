@@ -8,6 +8,7 @@ export interface BlockchainLog {
   actor_name: string | null;
   target_type: string | null;
   target_name: string | null;
+  result: string | null;
   details: string | null;
   timestamp: string;
   created_at: string;
@@ -18,6 +19,7 @@ export interface AddLogParams {
   actorName?: string | null;
   targetType?: string | null;
   targetName?: string | null;
+  result?: string | null;
   details?: Record<string, unknown> | null;
 }
 
@@ -45,10 +47,11 @@ export async function calculateBlockHash(
   actorName: string | null,
   targetType: string | null,
   targetName: string | null,
+  result: string | null,
   details: string | null,
   timestamp: string
 ): Promise<string> {
-  const data = `${prevHash}|${action}|${actorName ?? ''}|${targetType ?? ''}|${targetName ?? ''}|${details ?? ''}|${timestamp}`;
+  const data = `${prevHash}|${action}|${actorName ?? ''}|${targetType ?? ''}|${targetName ?? ''}|${result ?? ''}|${details ?? ''}|${timestamp}`;
   return sha256(data);
 }
 
@@ -61,6 +64,7 @@ export async function addBlockchainLog(
     const timestamp = new Date().toISOString();
     const prevHash = await getLatestBlockHash(db);
     const detailsStr = params.details ? JSON.stringify(params.details) : null;
+    const resultStr = params.result ?? 'success';
 
     const blockHash = await calculateBlockHash(
       prevHash,
@@ -68,14 +72,15 @@ export async function addBlockchainLog(
       params.actorName ?? null,
       params.targetType ?? null,
       params.targetName ?? null,
+      resultStr,
       detailsStr,
       timestamp
     );
 
     await db.prepare(`
       INSERT INTO blockchain_logs
-      (block_hash, prev_hash, action, actor_name, target_type, target_name, details, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (block_hash, prev_hash, action, actor_name, target_type, target_name, result, details, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       blockHash,
       prevHash,
@@ -83,6 +88,7 @@ export async function addBlockchainLog(
       params.actorName ?? null,
       params.targetType ?? null,
       params.targetName ?? null,
+      resultStr,
       detailsStr,
       timestamp
     ).run();
@@ -123,6 +129,7 @@ export async function verifyChain(
       block.actor_name,
       block.target_type,
       block.target_name,
+      block.result,
       block.details,
       block.timestamp
     );

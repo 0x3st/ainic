@@ -11,6 +11,9 @@
 - 内容审核（敏感词过滤 + 人工审核）
 - 管理后台（用户/域名/审核/设置管理）
 - 完整的审计日志
+- WHOIS 查询
+- 黑名单查询
+- 区块链日志记录
 
 ## 目录结构
 
@@ -18,14 +21,20 @@
 pykg-nic/
 ├── public/
 │   ├── index.html              # 用户前端页面
-│   └── admin.html              # 管理后台页面
+│   ├── admin.html              # 管理后台页面
+│   ├── whois.html              # WHOIS 查询页面
+│   ├── blacklist.html          # 黑名单查询页面
+│   └── logs.html               # 区块链日志页面
 ├── functions/
 │   ├── lib/
 │   │   ├── types.ts            # 类型定义
 │   │   ├── auth.ts             # 认证中间件
+│   │   ├── jwt.ts              # JWT 处理
 │   │   ├── cloudflare-dns.ts   # Cloudflare DNS API 客户端
 │   │   ├── credit.ts           # LinuxDO Credit 支付
-│   │   └── moderation.ts       # 内容审核
+│   │   ├── moderation.ts       # 内容审核
+│   │   ├── validators.ts       # 输入验证
+│   │   └── blockchain.ts       # 区块链日志
 │   ├── auth/
 │   │   ├── login.ts            # OAuth2 登录入口
 │   │   ├── callback.ts         # OAuth2 回调处理
@@ -34,6 +43,9 @@ pykg-nic/
 │       ├── me.ts               # 用户信息 API
 │       ├── domains.ts          # 域名注册/管理 API
 │       ├── ns.ts               # NS 记录管理 API
+│       ├── whois.ts            # WHOIS 查询 API
+│       ├── blacklist.ts        # 黑名单查询 API
+│       ├── logs.ts             # 区块链日志 API
 │       ├── orders/             # 订单管理 API
 │       ├── payment/            # 支付回调 API
 │       └── admin/              # 管理后台 API

@@ -57,7 +57,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return authResult;
   }
 
-  let body: { id?: number; action?: 'approve' | 'reject' | 'confirm_refund'; banUser?: boolean; reason?: string };
+  let body: { id?: number; action?: 'approve' | 'reject'; banUser?: boolean; reason?: string };
   try {
     body = await request.json();
   } catch {
@@ -70,8 +70,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return errorResponse('Missing or invalid id', 400);
   }
 
-  if (action !== 'approve' && action !== 'reject' && action !== 'confirm_refund') {
-    return errorResponse('Action must be "approve", "reject" or "confirm_refund"', 400);
+  if (action !== 'approve' && action !== 'reject') {
+    return errorResponse('Action must be "approve" or "reject"', 400);
   }
 
   try {
@@ -173,7 +173,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         details: { reason },
       });
     } else if (action === 'reject') {
-      // Rejected - Step 1: Return refund form data for frontend to submit
       // Delete domain if it exists with 'review' status
       const existingDomain = await env.DB.prepare(
         'SELECT * FROM domains WHERE label = ? AND owner_linuxdo_id = ? AND status = ?'
@@ -187,42 +186,13 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         console.log('[Admin Review] Domain deleted due to rejection:', review.label);
       }
 
-      // Check if refund is needed
-      const order = await env.DB.prepare(
-        'SELECT * FROM orders WHERE order_no = ?'
-      ).bind(review.order_no).first<Order>();
-
-      if (order && order.status === 'paid' && order.trade_no) {
-        // Return refund form data for frontend to submit
-        const refundFormData = {
-          act: 'refund',
-          pid: env.CREDIT_PID,
-          key: env.CREDIT_KEY,
-          trade_no: order.trade_no,
-          money: order.amount.toFixed(2),
-          out_trade_no: order.order_no,
-        };
-
-        return successResponse({
-          processed: false,
-          action: 'reject',
-          requires_refund: true,
-          refund_url: 'https://credit.linux.do/epay/api.php',
-          refund_form_data: refundFormData,
-          review_id: id,
-          ban_user: banUser,
-          reason,
-        });
-      }
-
-      // No refund needed, complete the rejection directly
       // Send notification to user
       await createNotification(
         env.DB,
         review.linuxdo_id,
         'domain_rejected',
         '域名审核未通过',
-        `您的域名 ${review.label}.${env.BASE_DOMAIN || 'py.kg'} 未通过审核。${reason ? `拒绝原因：${reason}` : `审核原因：${review.reason}`}`
+        `您的域名 ${review.label}.${env.BASE_DOMAIN || 'py.kg'} 未通过审核。${reason ? `拒绝原因：${reason}` : ''}`
       );
 
       // Log the action
@@ -273,75 +243,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }
 
       return successResponse({ processed: true, action: 'reject' });
-    } else if (action === 'confirm_refund') {
-      // Step 2: Confirm refund completed (called after frontend submits refund form)
-      const order = await env.DB.prepare(
-        'SELECT * FROM orders WHERE order_no = ?'
-      ).bind(review.order_no).first<Order>();
-
-      if (order) {
-        // Update order status to refunded
-        await env.DB.prepare(`
-          UPDATE orders SET status = 'refunded' WHERE order_no = ?
-        `).bind(order.order_no).run();
-      }
-
-      // Send notification to user
-      await createNotification(
-        env.DB,
-        review.linuxdo_id,
-        'domain_rejected',
-        '域名审核未通过',
-        `您的域名 ${review.label}.${env.BASE_DOMAIN || 'py.kg'} 未通过审核。${reason ? `拒绝原因：${reason}` : `审核原因：${review.reason}`} 已支付的积分将全额退还。`
-      );
-
-      // Log the action
-      await env.DB.prepare(`
-        INSERT INTO audit_logs (linuxdo_id, action, target, details, ip_address, created_at)
-        VALUES (?, ?, ?, ?, ?, datetime('now'))
-      `).bind(
-        adminId,
-        'review_reject',
-        review.label,
-        JSON.stringify({ review_id: id, user_id: review.linuxdo_id, ban_user: banUser, reason, refunded: true }),
-        request.headers.get('CF-Connecting-IP')
-      ).run();
-
-      // Get admin username for blockchain log
-      const adminUserConfirm = await env.DB.prepare(
-        'SELECT username FROM users WHERE linuxdo_id = ?'
-      ).bind(adminId).first<{ username: string }>();
-
-      // Add blockchain log for domain rejection
-      await addBlockchainLog(env.DB, {
-        action: BlockchainActions.DOMAIN_REJECT,
-        actorName: adminUserConfirm?.username || null,
-        targetType: 'domain',
-        targetName: `${review.label}.${env.BASE_DOMAIN || 'py.kg'}`,
-        details: { reason, ban_user: banUser, refunded: true },
-      });
-
-      // Ban user if requested
-      if (banUser) {
-        await env.DB.prepare(`
-          UPDATE users SET is_banned = 1, ban_reason = ?, updated_at = datetime('now')
-          WHERE linuxdo_id = ?
-        `).bind('审核被拒绝后封禁', review.linuxdo_id).run();
-
-        const targetUser = await env.DB.prepare(
-          'SELECT username FROM users WHERE linuxdo_id = ?'
-        ).bind(review.linuxdo_id).first<{ username: string }>();
-
-        await addBlockchainLog(env.DB, {
-          action: BlockchainActions.USER_BAN,
-          actorName: adminUserConfirm?.username || null,
-          targetType: 'user',
-          targetName: targetUser?.username || null,
-          details: { reason: '审核被拒绝后封禁' },
-        });
-      }
-
-      return successResponse({ processed: true, action: 'confirm_refund' });
     }
 
     return successResponse({ processed: true, action });

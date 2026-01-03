@@ -213,6 +213,24 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         request.headers.get('CF-Connecting-IP')
       ).run();
 
+      // Get user info for blockchain log
+      const userForReview = await env.DB.prepare(
+        'SELECT username FROM users WHERE linuxdo_id = ?'
+      ).bind(order.linuxdo_id).first<{ username: string }>();
+
+      // Add blockchain log for domain registration (pending review)
+      await addBlockchainLog(env.DB, {
+        action: BlockchainActions.DOMAIN_REGISTER,
+        actorName: userForReview?.username || null,
+        targetType: 'domain',
+        targetName: fqdn,
+        result: 'pending_review',
+        details: {
+          amount: params.money,
+          review_reason: pendingReview.reason,
+        },
+      });
+
       console.log('[Payment Notify] ✅ Payment logged, domain pending review:', fqdn);
     } else {
       console.log('[Payment Notify] 🌐 Creating domain:', fqdn);

@@ -367,6 +367,17 @@
         description += ` <span class="log-target">${log.target_name}</span>`;
       }
 
+      // Build complete block data for display
+      const blockData = {
+        action: log.action,
+        actor: log.actor_name || '系统',
+        target: log.target_name || '-',
+        target_type: log.target_type || '-',
+        result: log.result || 'success',
+        timestamp: log.timestamp,
+        details: details
+      };
+
       return `
         <div class="log-item" onclick="this.classList.toggle('expanded')">
           <div class="log-header">
@@ -374,13 +385,18 @@
             <span class="log-time">${formatTime(log.timestamp)}</span>
           </div>
           <div class="log-content">${description}</div>
+          <div class="log-result" style="font-size: 0.75rem; color: ${log.result === 'success' ? 'var(--success)' : 'var(--danger)'}; margin-top: 0.25rem;">
+            结果: ${log.result === 'success' ? '成功' : log.result}
+          </div>
           <div class="log-details">
+            <div style="margin-bottom: 1rem;">
+              <strong>完整区块数据:</strong>
+              <pre style="margin-top: 0.5rem; background: #f1f5f9; padding: 0.75rem; border-radius: 4px; white-space: pre-wrap; font-size: 0.75rem;">${JSON.stringify(blockData, null, 2)}</pre>
+            </div>
             <div><strong>区块哈希:</strong></div>
             <div class="hash-display">${log.block_hash}</div>
-            <div style="margin-top: 0.5rem;"><strong>上一区块:</strong></div>
+            <div style="margin-top: 0.5rem;"><strong>上一区块哈希:</strong></div>
             <div class="hash-display">${log.prev_hash}</div>
-            ${log.target_type ? `<div style="margin-top: 0.5rem;"><strong>目标类型:</strong> ${log.target_type}</div>` : ''}
-            ${Object.keys(details).length > 0 ? `<div style="margin-top: 0.5rem;"><strong>详细信息:</strong><pre style="margin-top: 0.25rem; white-space: pre-wrap;">${JSON.stringify(details, null, 2)}</pre></div>` : ''}
           </div>
         </div>
       `;

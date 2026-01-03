@@ -6,6 +6,7 @@ import { validateLabel } from '../lib/validators';
 import { CloudflareDNSClient } from '../lib/cloudflare-dns';
 import { LinuxDOCreditClient, generateOrderNo } from '../lib/credit';
 import { checkLabel, checkUserAbuse, banUser, getSetting } from '../lib/moderation';
+import { addBlockchainLog, BlockchainActions } from '../lib/blockchain';
 
 // GET /api/domains - Get user's domain
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -446,6 +447,23 @@ export const onRequestDelete: PagesFunction<Env> = async (context) => {
     await logAudit(env.DB, linuxdoId, 'domain_delete', domain.fqdn, {
       label: domain.label,
     }, getClientIP(request));
+
+    // Get user info for blockchain log
+    const user = await env.DB.prepare(
+      'SELECT username FROM users WHERE linuxdo_id = ?'
+    ).bind(linuxdoId).first<{ username: string }>();
+
+    // Add blockchain log for user domain deletion
+    await addBlockchainLog(env.DB, {
+      action: BlockchainActions.DOMAIN_DELETE,
+      actorName: user?.username || null,
+      targetType: 'domain',
+      targetName: domain.fqdn,
+      result: 'success',
+      details: {
+        deleted_by: 'user',
+      },
+    });
 
   } catch (e) {
     console.error('Database error:', e);
