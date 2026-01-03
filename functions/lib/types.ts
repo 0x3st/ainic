@@ -63,7 +63,7 @@ export interface Domain {
 export interface DnsRecord {
   id: number;
   domain_id: number;
-  type: 'A' | 'AAAA' | 'CNAME' | 'NS';
+  type: 'A' | 'AAAA' | 'CNAME' | 'TXT';
   name: string;
   content: string;
   ttl: number;

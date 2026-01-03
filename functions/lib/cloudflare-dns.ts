@@ -104,16 +104,16 @@ export class CloudflareDNSClient {
     return { success: true, records: result.data || [] };
   }
 
-  // Create a DNS record (A, AAAA, CNAME, or NS)
+  // Create a DNS record (A, AAAA, CNAME, or TXT)
   async createDNSRecord(
-    type: 'A' | 'AAAA' | 'CNAME' | 'NS',
+    type: 'A' | 'AAAA' | 'CNAME' | 'TXT',
     name: string,
     content: string,
     ttl: number = 3600,
     proxied: boolean = false
   ): Promise<{ success: true; record: CloudflareDNSRecord } | { success: false; error: string }> {
-    // NS records cannot be proxied
-    const shouldProxy = type !== 'NS' && proxied;
+    // TXT records cannot be proxied
+    const shouldProxy = type !== 'TXT' && proxied;
 
     const result = await this.request<CloudflareDNSRecord>(
       'POST',
@@ -213,13 +213,29 @@ export class CloudflareDNSClient {
     return { success: true, exists: (result.data || []).length > 0 };
   }
 
-  // Create NS record (legacy method)
+  // Create NS record (legacy method - calls Cloudflare API directly)
   async createNSRecord(
     subdomain: string,
     nameserver: string,
     ttl: number = 3600
   ): Promise<{ success: true; record: CloudflareDNSRecord } | { success: false; error: string }> {
-    return this.createDNSRecord('NS', subdomain, nameserver, ttl);
+    const result = await this.request<CloudflareDNSRecord>(
+      'POST',
+      `/zones/${this.zoneId}/dns_records`,
+      {
+        type: 'NS',
+        name: subdomain,
+        content: nameserver,
+        ttl,
+        proxied: false,
+      }
+    );
+
+    if (!result.success) {
+      return result;
+    }
+
+    return { success: true, record: result.data };
   }
 
   // Delete NS record by ID (legacy method)
@@ -296,7 +312,7 @@ export function validateNameserver(ns: string): { valid: boolean; error?: string
 }
 
 // Validate DNS record content based on type
-export function validateDNSRecordContent(type: 'A' | 'AAAA' | 'CNAME' | 'NS', content: string): { valid: boolean; error?: string } {
+export function validateDNSRecordContent(type: 'A' | 'AAAA' | 'CNAME' | 'TXT', content: string): { valid: boolean; error?: string } {
   switch (type) {
     case 'A': {
       // IPv4 validation
@@ -322,15 +338,24 @@ export function validateDNSRecordContent(type: 'A' | 'AAAA' | 'CNAME' | 'NS', co
       }
       return { valid: true };
     }
-    case 'CNAME':
-    case 'NS': {
+    case 'CNAME': {
       // Hostname validation
       const normalized = content.endsWith('.') ? content.slice(0, -1) : content;
       if (!/^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/.test(normalized)) {
-        return { valid: false, error: `Invalid ${type} target format. Must be a valid hostname (e.g., example.com)` };
+        return { valid: false, error: 'Invalid CNAME target format. Must be a valid hostname (e.g., example.com)' };
       }
       if (normalized.length > 253) {
         return { valid: false, error: 'Hostname too long' };
+      }
+      return { valid: true };
+    }
+    case 'TXT': {
+      // TXT record content validation
+      if (content.length === 0) {
+        return { valid: false, error: 'TXT record content cannot be empty' };
+      }
+      if (content.length > 255) {
+        return { valid: false, error: 'TXT record content too long (max 255 characters)' };
       }
       return { valid: true };
     }

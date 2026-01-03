@@ -1,10 +1,11 @@
-// /api/dns-records - DNS records management (A/AAAA/CNAME/NS)
+// /api/dns-records - DNS records management (A/AAAA/CNAME/TXT)
 
 import type { Env, Domain, DnsRecord } from '../lib/types';
 import { requireAuth, successResponse, errorResponse } from '../lib/auth';
 import { CloudflareDNSClient, validateDNSRecordContent } from '../lib/cloudflare-dns';
 
-const MAX_RECORDS = 4;
+const MAX_RECORDS = 10;
+const ALLOWED_TXT_PREFIXES = ['_acme-challenge'];
 
 // GET /api/dns-records - Get all DNS records for user's domain
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -61,8 +62,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { type, name, content, ttl = 3600, proxied = false } = body;
 
   // Validate type
-  if (!type || !['A', 'AAAA', 'CNAME', 'NS'].includes(type)) {
-    return errorResponse('Invalid or missing record type. Must be A, AAAA, CNAME, or NS', 400);
+  if (!type || !['A', 'AAAA', 'CNAME', 'TXT'].includes(type)) {
+    return errorResponse('Invalid or missing record type. Must be A, AAAA, CNAME, or TXT', 400);
   }
 
   // Validate name (@ for root, or subdomain label)
@@ -71,13 +72,29 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   // Normalize name: empty string becomes @
-  const normalizedName = name.trim() || '@';
+  const normalizedName = name.trim().toLowerCase() || '@';
+
+  // TXT records: only allow specific prefixes
+  if (type === 'TXT') {
+    const isAllowedPrefix = ALLOWED_TXT_PREFIXES.some(prefix => normalizedName === prefix || normalizedName.startsWith(prefix + '.'));
+    if (!isAllowedPrefix) {
+      return errorResponse(`TXT records are only allowed for certificate validation. Name must start with: ${ALLOWED_TXT_PREFIXES.join(', ')}`, 400);
+    }
+  }
 
   // Validate name format
   if (normalizedName !== '@') {
-    // Must be valid subdomain label (a-z0-9, can contain hyphens but not at start/end)
-    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(normalizedName)) {
-      return errorResponse('Invalid name format. Must be @ or a valid subdomain label (lowercase letters, numbers, hyphens)', 400);
+    // Must be valid subdomain label (a-z0-9, can contain hyphens and underscores for TXT)
+    if (type === 'TXT') {
+      // TXT records can have underscores (like _acme-challenge)
+      if (!/^[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?(\.[a-z0-9_]([a-z0-9_-]*[a-z0-9_])?)*$/.test(normalizedName)) {
+        return errorResponse('Invalid name format for TXT record', 400);
+      }
+    } else {
+      // A/AAAA/CNAME: standard subdomain format
+      if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(normalizedName)) {
+        return errorResponse('Invalid name format. Must be @ or a valid subdomain label (lowercase letters, numbers, hyphens)', 400);
+      }
     }
 
     if (normalizedName.length > 63) {
@@ -90,7 +107,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return errorResponse('Missing or invalid content', 400);
   }
 
-  const contentValidation = validateDNSRecordContent(type as 'A' | 'AAAA' | 'CNAME' | 'NS', content);
+  const contentValidation = validateDNSRecordContent(type as 'A' | 'AAAA' | 'CNAME' | 'TXT', content);
   if (!contentValidation.valid) {
     return errorResponse(contentValidation.error!, 400);
   }
@@ -101,8 +118,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   // Validate proxied - only A, AAAA, CNAME can be proxied
-  if (proxied && type === 'NS') {
-    return errorResponse('NS records cannot be proxied', 400);
+  if (proxied && type === 'TXT') {
+    return errorResponse('TXT records cannot be proxied', 400);
   }
 
   // Get user's domain
@@ -126,26 +143,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return errorResponse(`Maximum ${MAX_RECORDS} DNS records allowed`, 400);
   }
 
-  // Check mode compatibility
-  const hasNSRecords = existing.some(r => r.type === 'NS');
-  const hasOtherRecords = existing.some(r => r.type !== 'NS');
-
-  if (type === 'NS' && hasOtherRecords) {
-    return errorResponse('Cannot add NS records when A/AAAA/CNAME records exist. Please delete them first.', 400);
-  }
-
-  if (type !== 'NS' && hasNSRecords) {
-    return errorResponse('Cannot add A/AAAA/CNAME records when NS records exist. Please delete them first.', 400);
-  }
-
-  // CNAME cannot coexist with other records at the same name
+  // CNAME cannot coexist with other records at the same name (except TXT)
   const sameNameRecords = existing.filter(r => r.name === normalizedName);
-  if (type === 'CNAME' && sameNameRecords.length > 0) {
-    return errorResponse(`CNAME records cannot coexist with other records at '${normalizedName}'`, 400);
+  if (type === 'CNAME' && sameNameRecords.some(r => r.type !== 'TXT')) {
+    return errorResponse(`CNAME records cannot coexist with A/AAAA records at '${normalizedName}'`, 400);
   }
 
-  if (type !== 'CNAME' && sameNameRecords.some(r => r.type === 'CNAME')) {
-    return errorResponse(`Cannot add other records when CNAME exists at '${normalizedName}'`, 400);
+  if ((type === 'A' || type === 'AAAA') && sameNameRecords.some(r => r.type === 'CNAME')) {
+    return errorResponse(`Cannot add A/AAAA records when CNAME exists at '${normalizedName}'`, 400);
   }
 
   // Build full DNS name for Cloudflare
@@ -154,7 +159,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   // Create record in Cloudflare
   const cfClient = new CloudflareDNSClient(env.CLOUDFLARE_API_TOKEN, env.CLOUDFLARE_ZONE_ID);
   const cfResult = await cfClient.createDNSRecord(
-    type as 'A' | 'AAAA' | 'CNAME' | 'NS',
+    type as 'A' | 'AAAA' | 'CNAME' | 'TXT',
     dnsName,
     content,
     ttl,
@@ -173,9 +178,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `).bind(domain.id, type, normalizedName, content, ttl, proxied ? 1 : 0, cfResult.record.id).run();
 
-    // Update domain mode
-    const newMode = type === 'NS' ? 'ns' : 'direct';
-    await env.DB.prepare('UPDATE domains SET dns_mode = ? WHERE id = ?').bind(newMode, domain.id).run();
+    // Always use direct mode now (no NS support)
+    await env.DB.prepare('UPDATE domains SET dns_mode = ? WHERE id = ?').bind('direct', domain.id).run();
 
     return successResponse({
       message: 'DNS record created successfully',
