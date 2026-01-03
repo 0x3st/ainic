@@ -85,13 +85,13 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       'SELECT type, name, content, ttl, proxied FROM dns_records WHERE domain_id = ? ORDER BY type, name'
     ).bind(result.id).all<DnsRecord>();
 
-    // Build response - with privacy protection
+    // Build response
     const response: WhoisDomainInfo = {
       label: result.label,
       fqdn: result.fqdn,
       owner: {
         linuxdo_id: 0,  // Hide LinuxDO ID for privacy
-        username: 'Privacy Protect'
+        username: result.username || 'Unknown'
       },
       status: result.status,
       created_at: result.created_at,

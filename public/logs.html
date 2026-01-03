@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>操作日志 - PY.KG NIC</title>
+  <title>操作日志 - PY.KG</title>
   <style>
     :root {
       --primary: #2563eb;
@@ -248,6 +248,18 @@
     .back-link:hover {
       text-decoration: underline;
     }
+
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
@@ -300,6 +312,12 @@
         <button id="next-btn" onclick="nextPage()" disabled>下一页</button>
       </div>
     </div>
+
+    <footer>
+      <p>
+        <a href="/">首页</a> | <a href="/whois.html">WHOIS 查询</a> | <a href="/blacklist.html">小黑屋</a> | <a href="/logs.html">操作日志</a> | <a href="/terms.html">服务条款</a>
+      </p>
+    </footer>
   </div>
 
   <script>
