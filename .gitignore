@@ -1,6 +1,22 @@
 node_modules
-.next
-.env.local
 .DS_Store
 *.log
-.vercel
+
+# Cloudflare
+.wrangler
+.dev.vars
+wrangler.toml.local
+.mf
+
+# Build outputs
+dist
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+.idea

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AINIC Agent - AI-First Domain Management</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <h1>AINIC Agent</h1>
+            <p class="subtitle">AI-First Domain Management</p>
+            <div id="mode-indicator" class="mode-indicator">
+                <span class="mode-dot"></span>
+                <span id="mode-text">Connecting...</span>
+            </div>
+        </header>
+
+        <!-- Chat Messages -->
+        <div id="chat-container" class="chat-container">
+            <div class="message assistant">
+                <div class="message-content">
+                    <p>Hi! I'm your AI domain management assistant. I can help you:</p>
+                    <ul>
+                        <li>Check if a domain is available</li>
+                        <li>Register new domains</li>
+                        <li>Manage DNS records</li>
+                        <li>Check domain status</li>
+                        <li>Handle appeals</li>
+                    </ul>
+                    <p>What would you like to do?</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loading" class="loading hidden">
+            <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-container">
+            <textarea
+                id="message-input"
+                class="message-input"
+                placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+                rows="2"
+            ></textarea>
+            <button id="send-button" class="send-button">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M2 10L18 2L10 18L8 11L2 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p id="footer-text">Running in demo mode. Configure ANTHROPIC_API_KEY for AI-powered responses.</p>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>

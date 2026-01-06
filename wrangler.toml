@@ -1,0 +1,26 @@
+name = "ainic"
+compatibility_date = "2024-01-01"
+
+pages_build_output_dir = "public"
+
+# Cloudflare Pages configuration
+# The functions directory will be automatically detected and deployed
+
+[env.production]
+# Production environment variables (set in Cloudflare Dashboard)
+# ANTHROPIC_API_KEY (secret)
+# ANTHROPIC_MODEL
+# ANTHROPIC_BASE_URL
+# MAX_TOKENS
+# BASE_DOMAIN
+# DOMAIN_PRICE
+# DATABASE_URL (secret)
+# LINUXDO_CLIENT_ID (secret)
+# LINUXDO_CLIENT_SECRET (secret)
+# CREDIT_PID (secret)
+# CREDIT_KEY (secret)
+# CLOUDFLARE_API_TOKEN (secret)
+# CLOUDFLARE_ZONE_ID
+
+[env.preview]
+# Preview environment (same as production but for preview deployments)

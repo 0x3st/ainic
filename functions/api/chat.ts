@@ -1,14 +1,21 @@
-import { NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
+// Cloudflare Pages Function for AI Chat API
+// Automatically deployed as /api/chat
 
-// Read configuration from environment variables
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
-const ANTHROPIC_BASE_URL = process.env.ANTHROPIC_BASE_URL; // Optional: for custom endpoints/proxies
-const MAX_TOKENS = parseInt(process.env.MAX_TOKENS || '4096');
+interface Env {
+  ANTHROPIC_API_KEY?: string;
+  ANTHROPIC_MODEL?: string;
+  ANTHROPIC_BASE_URL?: string;
+  MAX_TOKENS?: string;
+  BASE_DOMAIN?: string;
+  DOMAIN_PRICE?: string;
+}
 
-// System prompt for the AI assistant
-const SYSTEM_PROMPT = `You are an AI assistant for a domain registration and management system called AINIC.
+interface ChatRequest {
+  message: string;
+  conversationHistory?: Array<{ role: string; content: string }>;
+}
+
+const SYSTEM_PROMPT = (env: Env) => `You are an AI assistant for a domain registration and management system called AINIC.
 
 Your capabilities:
 - Help users check domain availability
@@ -22,35 +29,46 @@ Important guidelines:
 - Be professional but friendly
 - Provide clear, actionable guidance
 - When users want to perform actions (register, add DNS, etc.), explain what will happen
-- For demo mode, clarify that actual operations are simulated
 - Keep responses concise and well-structured
 
-Base domain: ${process.env.BASE_DOMAIN || 'py.kg'}
+Base domain: ${env.BASE_DOMAIN || 'py.kg'}
 Payment system: LinuxDO Credit
-Price per domain: ${process.env.DOMAIN_PRICE || '10'} credits`;
+Price per domain: ${env.DOMAIN_PRICE || '10'} credits`;
 
-export async function POST(request: Request) {
+export async function onRequestPost(context: { request: Request; env: Env }): Promise<Response> {
   try {
-    const { message, conversationHistory = [] } = await request.json();
+    const { message, conversationHistory = [] }: ChatRequest = await context.request.json();
+
+    // Status check
+    if (message === '__status_check__') {
+      if (context.env.ANTHROPIC_API_KEY) {
+        return Response.json({
+          mode: 'production',
+          model: context.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022'
+        });
+      } else {
+        return Response.json({ mode: 'demo' });
+      }
+    }
 
     // Check if API key is configured
-    if (!ANTHROPIC_API_KEY) {
+    if (!context.env.ANTHROPIC_API_KEY) {
       // Demo mode - fallback to mock responses
-      return NextResponse.json({
+      return Response.json({
         response: getDemoResponse(message),
         mode: 'demo'
       });
     }
 
-    // Production mode - use Anthropic API
-    const anthropic = new Anthropic({
-      apiKey: ANTHROPIC_API_KEY,
-      ...(ANTHROPIC_BASE_URL && { baseURL: ANTHROPIC_BASE_URL })
-    });
+    // Production mode - call Anthropic API
+    const apiKey = context.env.ANTHROPIC_API_KEY;
+    const model = context.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+    const baseURL = context.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com';
+    const maxTokens = parseInt(context.env.MAX_TOKENS || '4096');
 
-    // Build message history for context
-    const messages: Anthropic.MessageParam[] = [
-      ...conversationHistory.map((msg: any) => ({
+    // Build message history
+    const messages = [
+      ...conversationHistory.map((msg) => ({
         role: msg.role,
         content: msg.content
       })),
@@ -61,33 +79,43 @@ export async function POST(request: Request) {
     ];
 
     // Call Anthropic API
-    const response = await anthropic.messages.create({
-      model: ANTHROPIC_MODEL,
-      max_tokens: MAX_TOKENS,
-      system: SYSTEM_PROMPT,
-      messages: messages
+    const response = await fetch(`${baseURL}/v1/messages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: maxTokens,
+        system: SYSTEM_PROMPT(context.env),
+        messages
+      })
     });
 
-    const assistantMessage = response.content[0].type === 'text'
-      ? response.content[0].text
-      : 'Sorry, I could not process that request.';
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('Anthropic API error:', error);
+      throw new Error(`API error: ${response.status}`);
+    }
 
-    return NextResponse.json({
+    const data = await response.json() as any;
+    const assistantMessage = data.content?.[0]?.text || 'Sorry, I could not process that request.';
+
+    return Response.json({
       response: assistantMessage,
       mode: 'production',
-      model: ANTHROPIC_MODEL
+      model
     });
 
   } catch (error) {
     console.error('Chat API error:', error);
 
-    // If API call fails, provide helpful error message
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
-    return NextResponse.json(
+    return Response.json(
       {
         error: 'Failed to process message',
-        details: errorMessage,
+        details: error instanceof Error ? error.message : 'Unknown error',
         hint: 'Check your ANTHROPIC_API_KEY configuration'
       },
       { status: 500 }
@@ -130,7 +158,7 @@ function getDemoResponse(message: string): string {
 
   // Help
   if (lowerMsg.includes('help')) {
-    return 'I\'m your AI domain management assistant! Here\'s what I can do:\n\n🔍 **Check Availability**\n"Is example.py.kg available?"\n\n📝 **Register Domains**\n"Register mysite.py.kg"\n\n⚙️ **Manage DNS**\n"Add A record for @ pointing to 1.2.3.4"\n\n🔧 **Domain Management**\n"Show my domains"\n"What\'s the status of my domain?"\n\n📢 **Appeals & Reports**\n"Appeal suspension for my domain"\n"Report abuse for spam.py.kg"\n\nJust describe what you want in natural language!\n\n💡 Demo mode: Set ANTHROPIC_API_KEY in .env.local for real AI conversations.';
+    return 'I\'m your AI domain management assistant! Here\'s what I can do:\n\n🔍 **Check Availability**\n"Is example.py.kg available?"\n\n📝 **Register Domains**\n"Register mysite.py.kg"\n\n⚙️ **Manage DNS**\n"Add A record for @ pointing to 1.2.3.4"\n\n🔧 **Domain Management**\n"Show my domains"\n"What\'s the status of my domain?"\n\n📢 **Appeals & Reports**\n"Appeal suspension for my domain"\n"Report abuse for spam.py.kg"\n\nJust describe what you want in natural language!\n\n💡 Demo mode: Set ANTHROPIC_API_KEY for real AI conversations.';
   }
 
   // Status check
@@ -139,5 +167,5 @@ function getDemoResponse(message: string): string {
   }
 
   // Default
-  return 'I\'m here to help with domain management! Try asking:\n\n• "Is [domain] available?"\n• "Register [domain]"\n• "Add DNS record"\n• "Check my domain status"\n• "Help"\n\nWhat would you like to do?\n\n💡 Demo mode: Set ANTHROPIC_API_KEY in .env.local for real AI conversations.';
+  return 'I\'m here to help with domain management! Try asking:\n\n• "Is [domain] available?"\n• "Register [domain]"\n• "Add DNS record"\n• "Check my domain status"\n• "Help"\n\nWhat would you like to do?\n\n💡 Demo mode: Set ANTHROPIC_API_KEY for real AI conversations.';
 }
