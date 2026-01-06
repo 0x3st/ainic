@@ -12,19 +12,39 @@ This is **NOT** a traditional web application. There are no admin panels, no for
 
 ## Quick Start
 
+### Option 1: Demo Mode (No API Key Required)
+
+Perfect for testing the interface without any setup:
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+```
+
+Visit `http://localhost:3000` - the system will use mock responses!
+
+### Option 2: Production Mode (With Real AI)
+
+For full AI-powered conversations:
+
 ```bash
 # Install dependencies
 npm install
 
 # Set up environment variables
 cp .env.example .env.local
-# Add your Anthropic API key to .env.local
+
+# Edit .env.local and add your API key:
+# ANTHROPIC_API_KEY=sk-ant-xxxxx
 
 # Run development server
 npm run dev
 ```
 
-Visit `http://localhost:3000` and start chatting!
+Get your API key from: https://console.anthropic.com/
 
 ## Features
 
@@ -42,8 +62,19 @@ Visit `http://localhost:3000` and start chatting!
 - Makes decisions based on policies
 - Explains decisions to users
 
-### Demo Mode
-Works without API key for testing - uses mock responses.
+### Dual Mode Operation
+
+**Demo Mode** (no API key)
+- Uses pattern matching for responses
+- Perfect for testing UI/UX
+- No API costs
+- Limited conversation ability
+
+**Production Mode** (with API key)
+- Real AI-powered conversations
+- Context-aware responses
+- Natural language understanding
+- Full conversational capabilities
 
 ## Tech Stack
 
@@ -57,17 +88,63 @@ Works without API key for testing - uses mock responses.
 
 ## Environment Variables
 
+All configuration is done through environment variables in `.env.local`:
+
+### AI Configuration
+
 ```env
-# Required for production
-ANTHROPIC_API_KEY=sk-ant-...
+# Required for production mode (optional for demo)
+ANTHROPIC_API_KEY=sk-ant-xxxxx
 
-# Database
-DATABASE_URL=postgresql://...
+# Choose AI model (optional, defaults to claude-3-5-sonnet-20241022)
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 
-# OAuth (LinuxDO)
-LINUXDO_CLIENT_ID=...
-LINUXDO_CLIENT_SECRET=...
+# Available models:
+#   - claude-3-5-sonnet-20241022  (Recommended: balanced)
+#   - claude-opus-4-20250514      (Most capable, higher cost)
+#   - claude-3-haiku-20240307     (Fastest, lowest cost)
+
+# Custom API endpoint (optional - for proxies)
+# ANTHROPIC_BASE_URL=https://your-proxy.com/v1
+
+# Max tokens per response (optional, default: 4096)
+MAX_TOKENS=4096
 ```
+
+### Database Configuration
+
+```env
+# PostgreSQL connection (Neon, Supabase, etc.)
+DATABASE_URL=postgresql://user:password@host/database
+```
+
+### LinuxDO Integration
+
+```env
+# OAuth authentication
+LINUXDO_CLIENT_ID=your_client_id
+LINUXDO_CLIENT_SECRET=your_client_secret
+
+# Credit payment system
+CREDIT_PID=your_credit_pid
+CREDIT_KEY=your_credit_key
+```
+
+### Domain & DNS Configuration
+
+```env
+# Base domain for subdomains
+BASE_DOMAIN=py.kg
+
+# Domain registration price (LinuxDO Credits)
+DOMAIN_PRICE=10
+
+# Cloudflare DNS API
+CLOUDFLARE_API_TOKEN=your_api_token
+CLOUDFLARE_ZONE_ID=your_zone_id
+```
+
+See `.env.example` for the complete configuration template.
 
 ## Deployment
 
