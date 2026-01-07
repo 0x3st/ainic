@@ -3,18 +3,22 @@ compatibility_date = "2024-01-01"
 
 pages_build_output_dir = "public"
 
-# Cloudflare Pages configuration
-# The functions directory will be automatically detected and deployed
+# Cloudflare D1 Database binding
+# Create database with: wrangler d1 create ainic-db
+# Then replace the database_id below
+[[d1_databases]]
+binding = "DB" # Available as env.DB in Functions
+database_name = "ainic-db"
+database_id = "" # Replace with your database ID after creation
 
 [env.production]
 # Production environment variables (set in Cloudflare Dashboard)
 # ANTHROPIC_API_KEY (secret)
 # ANTHROPIC_MODEL
-# ANTHROPIC_BASE_URL
+# ANTHROPIC_BASE_DOMAIN (default: py.kg)
 # MAX_TOKENS
 # BASE_DOMAIN
 # DOMAIN_PRICE
-# DATABASE_URL (secret)
 # LINUXDO_CLIENT_ID (secret)
 # LINUXDO_CLIENT_SECRET (secret)
 # CREDIT_PID (secret)
