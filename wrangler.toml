@@ -9,7 +9,7 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB" # Available as env.DB in Functions
 database_name = "ainic-db"
-database_id = "" # Replace with your database ID after creation
+database_id = "096b4b8b-fdcf-4f05-96cf-a4ef8475fbe8"
 
 [env.production]
 # Production environment variables (set in Cloudflare Dashboard)
