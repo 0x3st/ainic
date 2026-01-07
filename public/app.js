@@ -3,20 +3,21 @@ let conversationHistory = [];
 let isLoading = false;
 
 // DOM elements
-const chatContainer = document.getElementById('chat-container');
-const messageInput = document.getElementById('message-input');
-const sendButton = document.getElementById('send-button');
+const chatBox = document.getElementById('chatBox');
+const userInput = document.getElementById('userInput');
+const sendBtn = document.getElementById('sendBtn');
 const loadingIndicator = document.getElementById('loading');
-const modeText = document.getElementById('mode-text');
-const footerText = document.getElementById('footer-text');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const footerInfo = document.getElementById('footerInfo');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    messageInput.focus();
+    userInput.focus();
 
     // Event listeners
-    sendButton.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keydown', handleKeyPress);
+    sendBtn.addEventListener('click', sendMsg);
+    userInput.addEventListener('keypress', handleKeyPress);
 
     // Check API status
     checkAPIStatus();
@@ -26,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleKeyPress(e) {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        sendMessage();
+        sendMsg();
     }
 }
 
@@ -42,35 +43,43 @@ async function checkAPIStatus() {
         const data = await response.json();
 
         if (data.mode === 'production') {
-            modeText.textContent = `Production Mode (${data.model || 'AI'})`;
-            footerText.textContent = 'AI-powered responses enabled';
+            statusDot.style.color = '#10b981';
+            statusText.textContent = `AI Connected (${data.model || 'Claude'})`;
+            footerInfo.textContent = 'AI-powered responses enabled';
         } else {
-            modeText.textContent = 'Demo Mode';
-            footerText.textContent = 'Running in demo mode. Configure ANTHROPIC_API_KEY for AI responses.';
+            statusDot.style.color = '#f59e0b';
+            statusText.textContent = 'Demo Mode';
+            footerInfo.textContent = 'Running in demo mode. Configure ANTHROPIC_API_KEY for AI responses.';
         }
     } catch (error) {
         console.error('Failed to check API status:', error);
-        modeText.textContent = 'Unknown';
+        statusDot.style.color = '#ef4444';
+        statusText.textContent = 'Connection Error';
     }
 }
 
+// Fill input with quick action text
+function fillInput(txt) {
+    userInput.value = txt;
+    userInput.focus();
+}
+
 // Send message
-async function sendMessage() {
-    const message = messageInput.value.trim();
+async function sendMsg() {
+    const message = userInput.value.trim();
 
     if (!message || isLoading) return;
 
     // Add user message to UI
-    addMessage(message, 'user');
+    appendMessage(message, 'user');
     conversationHistory.push({ role: 'user', content: message });
 
     // Clear input
-    messageInput.value = '';
-    messageInput.style.height = 'auto';
+    userInput.value = '';
 
     // Show loading
     isLoading = true;
-    sendButton.disabled = true;
+    sendBtn.disabled = true;
     loadingIndicator.classList.remove('hidden');
 
     try {
@@ -95,43 +104,43 @@ async function sendMessage() {
         }
 
         // Add assistant response
-        addMessage(data.response, 'assistant');
+        appendMessage(data.response, 'ai');
         conversationHistory.push({ role: 'assistant', content: data.response });
 
     } catch (error) {
         console.error('Error sending message:', error);
-        addMessage(
+        appendMessage(
             'Sorry, I encountered an error processing your request. Please try again.',
-            'assistant'
+            'ai'
         );
     } finally {
         // Hide loading
         isLoading = false;
-        sendButton.disabled = false;
+        sendBtn.disabled = false;
         loadingIndicator.classList.add('hidden');
-        messageInput.focus();
+        userInput.focus();
     }
 }
 
 // Add message to chat
-function addMessage(content, role) {
+function appendMessage(content, role) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
 
-    const contentDiv = document.createElement('div');
-    contentDiv.className = 'message-content';
+    const bubbleDiv = document.createElement('div');
+    bubbleDiv.className = 'bubble';
 
-    // Format message content (preserve line breaks, lists, etc.)
-    contentDiv.innerHTML = formatMessage(content);
+    // Format message content
+    bubbleDiv.innerHTML = formatMessage(content);
 
-    messageDiv.appendChild(contentDiv);
-    chatContainer.appendChild(messageDiv);
+    messageDiv.appendChild(bubbleDiv);
+    chatBox.appendChild(messageDiv);
 
     // Scroll to bottom
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Format message content
+// Format message content with markdown-like syntax
 function formatMessage(text) {
     // Convert markdown-style formatting to HTML
     let formatted = text
@@ -143,14 +152,14 @@ function formatMessage(text) {
     const paragraphs = formatted.split('\n\n');
 
     return paragraphs.map(para => {
-        // Handle lists
+        // Handle bullet lists
         if (para.includes('\n• ') || para.includes('\n- ')) {
             const items = para
                 .split(/\n[•-] /)
                 .filter(item => item.trim())
                 .map(item => `<li>${item.trim()}</li>`)
                 .join('');
-            return `<ul>${items}</ul>`;
+            return `<ul style="margin-left: 1.5rem; margin-bottom: 0.75rem;">${items}</ul>`;
         }
 
         // Handle numbered lists
@@ -160,16 +169,10 @@ function formatMessage(text) {
                 .filter(item => item.trim())
                 .map(item => `<li>${item.trim()}</li>`)
                 .join('');
-            return `<ol>${items}</ol>`;
+            return `<ol style="margin-left: 1.5rem; margin-bottom: 0.75rem;">${items}</ol>`;
         }
 
         // Regular paragraph
-        return `<p>${para.replace(/\n/g, '<br>')}</p>`;
+        return `<p style="margin-bottom: 0.75rem;">${para.replace(/\n/g, '<br>')}</p>`;
     }).join('');
 }
-
-// Auto-resize textarea
-messageInput.addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 150) + 'px';
-});

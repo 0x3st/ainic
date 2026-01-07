@@ -1,67 +1,98 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AINIC Agent - AI-First Domain Management</title>
+    <title>AINIC - AI Domain Registry</title>
     <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
+
+    <!-- 动态背景层 -->
+    <div class="ambient-light">
+        <div class="blob blob-1"></div>
+        <div class="blob blob-2"></div>
+        <div class="blob blob-3"></div>
+    </div>
+
+    <!-- 主容器：磨砂玻璃 -->
+    <div class="glass-container">
+
+        <!-- 头部 -->
         <header class="header">
-            <h1>AINIC Agent</h1>
-            <p class="subtitle">AI-First Domain Management</p>
-            <div id="mode-indicator" class="mode-indicator">
-                <span class="mode-dot"></span>
-                <span id="mode-text">Connecting...</span>
+            <div class="brand">
+                <div class="logo-box">A</div>
+                <div>
+                    <h1>AINIC</h1>
+                    <span>AI-Powered Domain Registry</span>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot">●</span>
+                <span id="statusText">Connecting...</span>
             </div>
         </header>
 
-        <!-- Chat Messages -->
-        <div id="chat-container" class="chat-container">
-            <div class="message assistant">
-                <div class="message-content">
-                    <p>Hi! I'm your AI domain management assistant. I can help you:</p>
-                    <ul>
-                        <li>Check if a domain is available</li>
-                        <li>Register new domains</li>
-                        <li>Manage DNS records</li>
-                        <li>Check domain status</li>
-                        <li>Handle appeals</li>
-                    </ul>
-                    <p>What would you like to do?</p>
+        <!-- 聊天区 -->
+        <div class="chat-area" id="chatBox">
+            <div class="message ai">
+                <div class="bubble">
+                    <strong>Welcome to AINIC</strong><br>
+                    Hi! I'm your AI domain management assistant. I can help you:
+                    <div class="data-card">
+                        <div class="feature-list">
+                            • Check domain availability<br>
+                            • Register new domains<br>
+                            • Manage DNS records<br>
+                            • Handle appeals & reports
+                        </div>
+                    </div>
+                    What would you like to do today?
                 </div>
             </div>
         </div>
 
-        <!-- Loading Indicator -->
-        <div id="loading" class="loading hidden">
-            <div class="loading-dots">
-                <span></span>
-                <span></span>
-                <span></span>
+        <!-- Loading indicator -->
+        <div id="loading" class="loading-container hidden">
+            <div class="bubble loading-bubble">
+                <div class="loading-dots">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
             </div>
         </div>
 
-        <!-- Input Area -->
-        <div class="input-container">
-            <textarea
-                id="message-input"
-                class="message-input"
-                placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-                rows="2"
-            ></textarea>
-            <button id="send-button" class="send-button">
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-                    <path d="M2 10L18 2L10 18L8 11L2 10Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            </button>
-        </div>
-
-        <!-- Footer -->
+        <!-- 底部 -->
         <div class="footer">
-            <p id="footer-text">Running in demo mode. Configure ANTHROPIC_API_KEY for AI-powered responses.</p>
+            <!-- 功能胶囊 -->
+            <div class="chips-scroll">
+                <div class="chip" onclick="fillInput('Is example.py.kg available?')">🔍 Check Domain</div>
+                <div class="chip" onclick="fillInput('Register mysite.py.kg')">⚡️ Register Domain</div>
+                <div class="chip" onclick="fillInput('Add A record pointing to 1.2.3.4')">🌐 DNS Setup</div>
+                <div class="chip" onclick="fillInput('Show my domain status')">📊 Domain Status</div>
+                <div class="chip" onclick="fillInput('Help')">💡 Help</div>
+            </div>
+
+            <!-- 输入框 -->
+            <div class="input-group">
+                <input
+                    type="text"
+                    id="userInput"
+                    placeholder="Type your message... (Press Enter to send)"
+                    autocomplete="off"
+                >
+                <button class="send-btn" id="sendBtn" onclick="sendMsg()">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Footer info -->
+            <div class="footer-info" id="footerInfo">
+                Running in demo mode. Configure ANTHROPIC_API_KEY for AI responses.
+            </div>
         </div>
     </div>
 
